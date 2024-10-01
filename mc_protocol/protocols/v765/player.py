@@ -1,8 +1,13 @@
+import asyncio
 import uuid
+from contextlib import contextmanager, asynccontextmanager
+from datetime import datetime
+
+import pytz
 
 from mc_protocol.client import Client
 from mc_protocol.event_loop import EventLoop
-from mc_protocol.mc_types import UUID, String, SocketReader, VarInt
+from mc_protocol.mc_types import UUID, String, SocketReader, VarInt, Long
 from mc_protocol.protocols.v765.configuration import Configuration
 from mc_protocol.protocols.v765.inbound.login import LoginSuccessResponse, CompressResponse
 from mc_protocol.protocols.v765.inbound.play import (
@@ -10,7 +15,10 @@ from mc_protocol.protocols.v765.inbound.play import (
     CombatDeathResponse,
 )
 from mc_protocol.protocols.v765.outbound.login import LoginStartRequest, LoginAcknowledgedRequest
-from mc_protocol.protocols.v765.outbound.play import TeleportConfirmRequest, KeepAliveRequest, ClientCommandRequest
+from mc_protocol.protocols.v765.outbound.play import (
+    TeleportConfirmRequest, KeepAliveRequest, ClientCommandRequest,
+    ChatMessageRequest,
+)
 from mc_protocol.protocols.v765.utils import handshake
 from mc_protocol.states.enums import HandshakingNextState, ConnectionState
 
@@ -20,6 +28,7 @@ class OfflinePlayerNamespace:
 
 
 class Player:
+    # TODO: Add readable logs
 
     def __init__(self, client: Client):
         self.client = client
@@ -83,5 +92,16 @@ class Player:
         if response.player_id.int == self.player_entity_id:
             await self.respawn()
 
+    async def chat_message(self, message: str):
+        print(f'Sending chat message: {message}')
+        await self.client.send_packet(ChatMessageRequest(
+            message=String(message),
+            timestamp=Long(round(datetime.now(tz=pytz.UTC).timestamp())),
+            message_count=VarInt(0),
+        ))
 
-
+    @asynccontextmanager
+    async def spawned(self):
+        while not self.player_entity_id:
+            await asyncio.sleep(0.000001)
+        yield

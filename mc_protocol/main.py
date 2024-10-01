@@ -25,8 +25,9 @@ async def main():
 
         player = Player(client)
         await player.login('Notch')
-        # player.chat('Hello, world!')
-        # player.walk(1, 2, 3)
+
+        async with player.spawned():
+            await player.chat_message('Hello, world!')
 
         await loop
 

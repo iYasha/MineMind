@@ -11,7 +11,6 @@ from mc_protocol.states.enums import HandshakingNextState
 
 
 class Server:
-    # todo: Better way to use singleton pattern
     info: StatusResponse = None
 
     def __init__(self, client: Client):
