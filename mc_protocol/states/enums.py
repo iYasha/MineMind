@@ -13,12 +13,3 @@ class ConnectionState(str, Enum):
     CONFIGURATION = 'configuration'
     PLAY = 'play'
 
-
-class HandshakingInboundEvent(int, Enum):
-    pass
-
-
-class HandshakingOutboundEvent(int, Enum):
-    INTENTION = 0x00
-
-

@@ -3,7 +3,6 @@ import re
 from collections import defaultdict
 import requests
 
-protocol_name = 'protocol-test.json'
 version = '1.20.3'
 base_url = f'https://raw.githubusercontent.com/PrismarineJS/minecraft-data/refs/heads/master/data/pc/{version}'
 version_url = f'{base_url}/version.json'
@@ -230,7 +229,7 @@ outbound_schema = generate_outbound_schema(pc)
 inbound_schema = generate_inbound_schema(pc)
 import os
 
-base_path = 'mc_protocol/packets'
+base_path = 'mc_protocol/protocols'
 version_path = f'{base_path}/v{version['version']}'
 os.makedirs(f'{version_path}/outbound', exist_ok=True)
 os.makedirs(f'{version_path}/inbound', exist_ok=True)
@@ -238,7 +237,7 @@ os.makedirs(f'{version_path}/inbound', exist_ok=True)
 open(f'{version_path}/outbound/__init__.py', 'w').write('')
 open(f'{version_path}/inbound/__init__.py', 'w').write('')
 open(f'{version_path}/__init__.py', 'w').write('')
-open('mc_protocol/packets/__init__.py', 'w').write('')
+open('mc_protocol/protocols/__init__.py', 'w').write('')
 for module in outbound_schema.keys():
     open(f'{version_path}/outbound/{module}.py', 'w').write(outbound_schema[module])
 
