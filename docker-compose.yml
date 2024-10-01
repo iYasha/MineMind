@@ -8,5 +8,6 @@ services:
     environment:
       EULA: "TRUE"
       ONLINE_MODE: "FALSE"
+      VERSION: "1.20.3"
     volumes:
       - ./data:/data

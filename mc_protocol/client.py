@@ -1,5 +1,4 @@
 import asyncio
-import io
 import json
 import uuid
 import zlib
@@ -8,10 +7,11 @@ from collections import Counter
 from typing import NamedTuple
 
 from mc_protocol.constants import ENTITIES
-from mc_protocol.enums import State, ConnectionState
+from mc_protocol.states.enums import HandshakingNextState, ConnectionState
 from mc_protocol.mc_types import VarInt, String, UUID, UShort, Boolean, Long, Short, Int
 from mc_protocol.mc_types.float import Double, Float
 from mc_protocol.schemas import StatusResponse
+from mc_protocol.states.events import IntentionRequest, OutboundEvent, StatusRequest
 from mc_protocol.utils import AsyncBytesIO
 
 
@@ -39,6 +39,22 @@ class Client:
     async def __aexit__(self, exc_type, exc, tb):
         self.writer.close()
         await self.writer.wait_closed()
+
+    def pack_packet_v2(self, event: OutboundEvent) -> bytes:
+        # https://wiki.vg/Protocol#Packet_format
+        buffer = bytes(VarInt(event.packet_id)) + event.payload
+        buffer_len = len(buffer)
+        if self.threshold is None:
+            return VarInt(buffer_len).bytes + buffer
+        elif buffer_len >= self.threshold:
+            data_length = VarInt(buffer_len).bytes
+            compressed_data = zlib.compress(buffer)
+            packet = data_length + compressed_data
+            return VarInt(len(packet)).bytes + packet
+        elif buffer_len < self.threshold:
+            data_length = VarInt(0).bytes
+            buffer = data_length + buffer
+            return VarInt(len(buffer)).bytes + buffer
 
     def pack_packet(self, packet_id: int, data: bytes = b'') -> bytes:
         # https://wiki.vg/Protocol#Packet_format
@@ -84,27 +100,24 @@ class Client:
             data = await reader.read(data_length)
             return packet_id, AsyncBytesIO(data)
 
-    async def handshake(self, next_state: State):
-        payload = (
-            VarInt(self.protocol_version).bytes +
-            String(self.host).bytes +
-            UShort(self.port).bytes +  # Big-endian unsigned short
-            next_state.value
-        )
+    async def handshake(self, next_state: HandshakingNextState):
+        request = IntentionRequest(self.protocol_version, self.host, self.port, next_state)
 
-        self.writer.write(self.pack_packet(0x00, payload))
+        self.writer.write(self.pack_packet_v2(request))
         await self.writer.drain()
 
-        if next_state == State.LOGIN:
+        if next_state == HandshakingNextState.LOGIN:
             self.state = ConnectionState.LOGIN
-        elif next_state == State.STATUS:
+        elif next_state == HandshakingNextState.STATUS:
             self.state = ConnectionState.STATUS
         else:
             raise ValueError(f'Invalid next state: {next_state}')
 
     async def server_status(self) -> StatusResponse:
-        await self.handshake(State.STATUS)
-        self.writer.write(self.pack_packet(0x00))
+        await self.handshake(HandshakingNextState.STATUS)
+
+        request = StatusRequest()
+        self.writer.write(self.pack_packet_v2(request))
         await self.writer.drain()
 
         packet_id, data = await self.unpack_packet(self.reader)
@@ -350,5 +363,5 @@ class Client:
             raise e
 
     async def login(self):
-        await self.handshake(State.LOGIN)
+        await self.handshake(HandshakingNextState.LOGIN)
         await self.login_start('Notch')

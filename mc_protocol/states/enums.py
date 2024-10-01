@@ -1,7 +1,6 @@
 from enum import Enum
 
-
-class State(Enum):
+class HandshakingNextState(Enum):
     STATUS = b'\x01'
     LOGIN = b'\x02'
     TRANSFER = b'\x03'
@@ -13,4 +12,13 @@ class ConnectionState(str, Enum):
     LOGIN = 'login'
     CONFIGURATION = 'configuration'
     PLAY = 'play'
+
+
+class HandshakingInboundEvent(int, Enum):
+    pass
+
+
+class HandshakingOutboundEvent(int, Enum):
+    INTENTION = 0x00
+
 

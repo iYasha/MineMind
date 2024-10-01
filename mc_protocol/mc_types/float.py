@@ -34,6 +34,14 @@ class Float:
     async def from_stream(cls, reader: StreamReader | AsyncBytesIO) -> 'Float':
         return cls(await reader.read(4))
 
+    @property
+    def float(self) -> float:
+        return float(self)
+
+    @property
+    def bytes(self) -> bytes:
+        return bytes(self)
+
 
 class Double:
 
@@ -64,3 +72,11 @@ class Double:
     @classmethod
     async def from_stream(cls, reader: StreamReader | AsyncBytesIO) -> 'Double':
         return cls(await reader.read(8))
+
+    @property
+    def float(self) -> float:
+        return float(self)
+
+    @property
+    def bytes(self) -> bytes:
+        return bytes(self)
