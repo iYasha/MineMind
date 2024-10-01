@@ -1,5 +1,7 @@
 from asyncio import StreamReader
 
+from mc_protocol.utils import AsyncBytesIO
+
 
 class Boolean:
 
@@ -36,6 +38,6 @@ class Boolean:
         return bytes(self)
 
     @classmethod
-    async def from_stream(cls, reader: StreamReader) -> 'Boolean':
+    async def from_stream(cls, reader: StreamReader | AsyncBytesIO) -> 'Boolean':
         return cls(bool(await reader.read(1)))
 

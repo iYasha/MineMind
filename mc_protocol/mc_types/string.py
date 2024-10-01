@@ -1,6 +1,7 @@
 from asyncio import StreamReader
 
 from mc_protocol.mc_types import VarInt
+from mc_protocol.utils import AsyncBytesIO
 
 
 class String:
@@ -19,7 +20,7 @@ class String:
             raise TypeError('Value must be a str or bytes object')
 
     @classmethod
-    async def from_stream(cls, reader: StreamReader) -> 'String':
+    async def from_stream(cls, reader: StreamReader | AsyncBytesIO) -> 'String':
         length = await VarInt.from_stream(reader)
         return cls((await reader.read(length.int)).decode('utf-8'))
 

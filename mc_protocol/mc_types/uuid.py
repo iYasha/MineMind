@@ -1,6 +1,8 @@
 import uuid
 from asyncio import StreamReader
 
+from mc_protocol.utils import AsyncBytesIO
+
 
 class UUID:
 
@@ -20,7 +22,7 @@ class UUID:
         return self.bytes_value
 
     @classmethod
-    async def from_stream(cls, reader: StreamReader) -> 'UUID':
+    async def from_stream(cls, reader: StreamReader | AsyncBytesIO) -> 'UUID':
         return cls(uuid.UUID(bytes=await reader.read(16)))
 
     @property

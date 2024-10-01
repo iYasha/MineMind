@@ -1,3 +1,6 @@
+from asyncio import StreamReader
+
+from mc_protocol.utils import AsyncBytesIO
 
 
 class Int:
@@ -26,7 +29,11 @@ class Int:
         return self.bytes_value
 
     def __repr__(self):
-        return f'Int({self.int_value})'
+        return f'Int({int(self)})'
+
+    @classmethod
+    async def from_stream(cls, reader: StreamReader | AsyncBytesIO):
+        return cls(await reader.read(cls.size))
 
     @property
     def int(self) -> int:

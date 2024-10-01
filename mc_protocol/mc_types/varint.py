@@ -99,4 +99,8 @@ class VarInt:
     def int(self) -> int:
         return int(self)
 
+    @property
+    def hex(self) -> int:
+        return hex(int(self))
+
 
