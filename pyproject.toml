@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "mc-protocol"
+version = "0.1.0"
+description = ""
+authors = ["iYasha <33287747+iYasha@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pydantic = "^2.9.2"
+cryptography = "^43.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
