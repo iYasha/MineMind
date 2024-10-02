@@ -4,9 +4,9 @@ from collections import defaultdict
 from typing import Literal, Type, Tuple, NamedTuple
 
 from mc_protocol.client import Client
+from mc_protocol.mc_types.base import AsyncBytesIO
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import InboundEvent
-from mc_protocol.utils import AsyncBytesIO
 
 ALL_EVENTS = '*'
 
@@ -60,7 +60,7 @@ class EventLoop:
 
     async def run_forever(self):
         while True:
-            print('Waiting for packet...')
+            # print('Waiting for packet...')
             packet_id, data = await self.client.unpack_packet(self.client.reader)
             listeners = (
                 self._listeners[self.client.state].get(packet_id.int, []) +
@@ -68,10 +68,10 @@ class EventLoop:
                 self._listeners[self.client.state].get(ALL_EVENTS, [])
             )
             if not listeners:
-                print(
-                    f'[State={self.client.state}] Received packet {packet_id.hex} but no listeners are registered. '
-                    f'Data: {len(await data.read(-1))}'
-                )
+                # print(
+                #     f'[State={self.client.state}] Received packet {packet_id.hex} but no listeners are registered. '
+                #     f'Data: {len(await data.read(-1))}'
+                # )
                 continue
 
             # TODO: Add event auto-parsing

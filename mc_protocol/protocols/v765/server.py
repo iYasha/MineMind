@@ -2,7 +2,7 @@ import asyncio
 
 from mc_protocol.client import Client
 from mc_protocol.event_loop import EventLoop
-from mc_protocol.mc_types import SocketReader
+from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.protocols.v765.inbound.status import ServerInfoResponse
 from mc_protocol.protocols.v765.outbound.status import PingStartRequest
 from mc_protocol.protocols.v765.utils import handshake

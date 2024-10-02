@@ -1,3 +1,7 @@
+from decimal import Decimal
+from typing import Optional
+
+from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import InboundEvent
 from mc_protocol.mc_types import *
@@ -9,11 +13,11 @@ class SpawnEntityResponse(InboundEvent):
 
     def __init__(
         self,
-        entity_id: VarInt, objectuuid: UUID, type: VarInt, x: Double, y: Double, z: Double, pitch: Byte, yaw: Byte,
+        entity_id: VarInt, object_uuid: UUID, type: VarInt, x: Double, y: Double, z: Double, pitch: Byte, yaw: Byte,
         head_pitch: Byte, object_data: VarInt, velocityx: Short, velocityy: Short, velocityz: Short,
     ) -> None:
         self.entity_id = entity_id
-        self.objectuuid = objectuuid
+        self.object_uuid = object_uuid
         self.type = type
         self.x = x
         self.y = y
@@ -26,10 +30,27 @@ class SpawnEntityResponse(InboundEvent):
         self.velocityy = velocityy
         self.velocityz = velocityz
 
+    def set_new_position(self, x: Double | None = None, y: Double | None = None, z: Double  | None = None, pitch: Byte | None = None, yaw: Byte | None = None):
+        if x is not None:
+            self.x = x
+        if y is not None:
+            self.y = y
+        if z is not None:
+            self.z = z
+        if pitch is not None:
+            self.pitch = pitch
+        if yaw is not None:
+            self.yaw = yaw
+
+    def new_position_from_delta(self, dx: Short, dy: Short, dz: Short):
+        self.x = Double((Decimal(dx.int) / 128 + self.x.decimal * 32) / 32)
+        self.y = Double((Decimal(dy.int) / 128 + self.y.decimal * 32) / 32)
+        self.z = Double((Decimal(dz.int) / 128 + self.z.decimal * 32) / 32)
+
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'SpawnEntityResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), objectuuid=await UUID.from_stream(reader),
+            entity_id=await VarInt.from_stream(reader), object_uuid=await UUID.from_stream(reader),
             type=await VarInt.from_stream(reader), x=await Double.from_stream(reader),
             y=await Double.from_stream(reader), z=await Double.from_stream(reader),
             pitch=await Byte.from_stream(reader), yaw=await Byte.from_stream(reader),
@@ -209,6 +230,53 @@ class UnloadChunkResponse(InboundEvent):
         return cls(
             chunkz=await Int.from_stream(reader), chunkx=await Int.from_stream(reader)
         )
+
+
+class DamageEventResponse(InboundEvent):
+    packet_id = 0x19
+    state = ConnectionState.PLAY
+
+    def __init__(
+        self,
+        entity_id: VarInt,
+        source_type_id: VarInt,
+        source_cause_id: VarInt,
+        source_direct_id: VarInt,
+        has_source_position: Boolean,
+        source_position_x: Optional[Double] = None,
+        source_position_y: Optional[Double] = None,
+        source_position_z: Optional[Double] = None,
+    ) -> None:
+        self.entity_id = entity_id
+        self.source_type_id = source_type_id
+
+        self.source_cause_id = source_cause_id
+        if self.source_cause_id != 0:
+            self.source_cause_id = VarInt(self.source_cause_id.int - 1)
+
+        self.source_direct_id = source_direct_id
+        if self.source_direct_id != 0:
+            self.source_direct_id = VarInt(self.source_direct_id.int - 1)
+
+        self.has_source_position = has_source_position
+        self.source_position_x = source_position_x
+        self.source_position_y = source_position_y
+        self.source_position_z = source_position_z
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'DamageEventResponse':
+        instance = cls(
+            entity_id=await VarInt.from_stream(reader),
+            source_type_id=await VarInt.from_stream(reader),
+            source_cause_id=await VarInt.from_stream(reader),
+            source_direct_id=await VarInt.from_stream(reader),
+            has_source_position=await Boolean.from_stream(reader),
+        )
+        if instance.has_source_position:
+            instance.source_position_x = await Double.from_stream(reader)
+            instance.source_position_y = await Double.from_stream(reader)
+            instance.source_position_z = await Double.from_stream(reader)
+        return instance
 
 
 class GameStateChangeResponse(InboundEvent):
@@ -836,6 +904,27 @@ class AcknowledgePlayerDiggingResponse(InboundEvent):
     async def from_stream(cls, reader: SocketReader) -> 'AcknowledgePlayerDiggingResponse':
         return cls(
             sequence_id=await VarInt.from_stream(reader)
+        )
+
+
+class RemoveEntityResponse(InboundEvent):
+    packet_id = 0x40
+    state = ConnectionState.PLAY
+
+    def __init__(
+        self,
+        count: VarInt,
+        entity_ids: Array[VarInt],
+    ) -> None:
+        self.count = count
+        self.entity_ids = entity_ids
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'RemoveEntityResponse':
+        count = await VarInt.from_stream(reader)
+        return cls(
+            count=count,
+            entity_ids=await Array[VarInt].from_stream(reader, count.int, VarInt)
         )
 
 

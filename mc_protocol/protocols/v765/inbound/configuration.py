@@ -1,3 +1,4 @@
+from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import InboundEvent
 from mc_protocol.mc_types import *
@@ -16,7 +17,7 @@ class PluginMessageResponse(InboundEvent):
         self.data = data
 
     @classmethod
-    async def from_stream(cls, reader: SocketReader) -> 'ClientboundPluginMessageResponse':
+    async def from_stream(cls, reader: SocketReader) -> 'PluginMessageResponse':
         return cls(
             channel=await String.from_stream(reader),
             data=await reader.read(-1)

@@ -1,3 +1,4 @@
+from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import InboundEvent
 from mc_protocol.mc_types import *

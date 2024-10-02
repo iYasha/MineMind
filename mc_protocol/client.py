@@ -3,9 +3,9 @@ import zlib
 from asyncio import StreamReader
 
 from mc_protocol.mc_types import VarInt
+from mc_protocol.mc_types.base import AsyncBytesIO
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import OutboundEvent
-from mc_protocol.utils import AsyncBytesIO
 
 
 class Client:
@@ -61,9 +61,9 @@ class Client:
             packet_length = packet_length.int - len(data_length.bytes)
 
             compressed_data = await reader.read(packet_length)
-            print(f'COMPRESSED DATA: {packet_length}')
+            # print(f'COMPRESSED DATA: {packet_length}')
             while len(compressed_data) < packet_length:  # sometimes the rest of the data hasn't been transmited yet
-                print(f'READ ADDITIONAL PACKAGES: {packet_length - len(compressed_data)}')
+                # print(f'READ ADDITIONAL PACKAGES: {packet_length - len(compressed_data)}')
                 compressed_data += await reader.read(
                     packet_length - len(compressed_data)
                     )  # so we try to read what is missing

@@ -1,7 +1,7 @@
 from asyncio import StreamReader
 from typing import Tuple
 
-from mc_protocol.utils import AsyncBytesIO
+from mc_protocol.mc_types.base import AsyncBytesIO
 
 
 class VarInt:

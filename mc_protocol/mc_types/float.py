@@ -1,21 +1,24 @@
 import struct
 from asyncio import StreamReader
+from decimal import Decimal
 
-from mc_protocol.utils import AsyncBytesIO
+from mc_protocol.mc_types.base import AsyncBytesIO
 
 
 class Float:
 
-    def __init__(self, value: float | bytes):
+    def __init__(self, value: int | float | bytes):
         self.float_value = None
         self.bytes_value = None
 
         if isinstance(value, float):
             self.float_value = value
+        elif isinstance(value, int):
+            self.float_value = float(value)
         elif isinstance(value, bytes):
             self.bytes_value = value
         else:
-            raise TypeError('Value must be an int or bytes object')
+            raise TypeError('Value must be an int, float or bytes object')
 
     def __float__(self):
         if self.float_value is None:
@@ -45,16 +48,18 @@ class Float:
 
 class Double:
 
-    def __init__(self, value: float | bytes):
+    def __init__(self, value: Decimal | float | bytes):
         self.float_value = None
         self.bytes_value = None
 
         if isinstance(value, float):
             self.float_value = value
+        elif isinstance(value, Decimal):
+            self.float_value = float(value)
         elif isinstance(value, bytes):
             self.bytes_value = value
         else:
-            raise TypeError('Value must be an int or bytes object')
+            raise TypeError('Value must be an float or bytes object')
 
     def __float__(self):
         if self.float_value is None:
@@ -80,3 +85,7 @@ class Double:
     @property
     def bytes(self) -> bytes:
         return bytes(self)
+
+    @property
+    def decimal(self) -> Decimal:
+        return Decimal(self.float)

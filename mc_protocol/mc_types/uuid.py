@@ -1,7 +1,7 @@
 import uuid
 from asyncio import StreamReader
 
-from mc_protocol.utils import AsyncBytesIO
+from mc_protocol.mc_types.base import AsyncBytesIO
 
 
 class UUID:

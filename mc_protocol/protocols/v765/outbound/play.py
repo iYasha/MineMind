@@ -1,4 +1,6 @@
 import math
+from enum import Enum
+from typing import Optional
 
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import OutboundEvent
@@ -522,6 +524,8 @@ class HeldItemSlotRequest(OutboundEvent):
         self,
         slot_id: Short,
     ) -> None:
+        if slot_id.int < 0 or slot_id.int > 8:
+            raise ValueError('Slot ID must be between 0 and 8')
         self.slot_id = slot_id
 
     @property
@@ -533,11 +537,15 @@ class ArmAnimationRequest(OutboundEvent):
     packet_id = 0x33
     state = ConnectionState.PLAY
 
+    class Hand(int, Enum):
+        MAIN_HAND = 0
+        OFF_HAND = 1
+
     def __init__(
         self,
-        hand: VarInt,
+        hand: Hand,
     ) -> None:
-        self.hand = hand
+        self.hand = VarInt(hand)
 
     @property
     def payload(self) -> bytes:
@@ -603,6 +611,46 @@ class ChunkBatchReceivedRequest(OutboundEvent):
     @property
     def payload(self) -> bytes:
         return self.chunks_per_tick.bytes
+
+
+class InteractRequest(OutboundEvent):
+    packet_id = 0x13
+    state = ConnectionState.PLAY
+
+    class InteractType(int, Enum):
+        INTERACT = 0
+        ATTACK = 1
+        INTERACT_AT = 2
+
+    def __init__(
+        self,
+        entity_id: VarInt,
+        interact_type: InteractType,
+        sneaking: Boolean,
+        target_x: Optional[Float] = None,
+        target_y: Optional[Float] = None,
+        target_z: Optional[Float] = None,
+        hand: Optional[VarInt] = None,
+    ) -> None:
+        self.entity_id = entity_id
+        self.interact_type = interact_type
+        self.sneaking = sneaking
+        self.target_x = target_x
+        self.target_y = target_y
+        self.target_z = target_z
+        self.hand = hand
+
+    @property
+    def payload(self) -> bytes:
+        return (
+            self.entity_id.bytes +
+            VarInt(self.interact_type).bytes +
+            (self.target_x.bytes if self.target_x is not None else b'') +
+            (self.target_y.bytes if self.target_y is not None else b'') +
+            (self.target_z.bytes if self.target_z is not None else b'') +
+            (self.hand.bytes if self.hand is not None else b'') +
+            self.sneaking.bytes
+        )
 
 
 class ConfigurationAcknowledgedRequest(OutboundEvent):
