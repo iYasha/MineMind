@@ -32,7 +32,7 @@ class Int(MCType):
         return f'Int({int(self)})'
 
     @classmethod
-    async def from_stream(cls, reader: StreamReader | AsyncBytesIO):
+    async def from_stream(cls, reader: StreamReader | AsyncBytesIO, **kwargs) -> 'Int':
         return cls(await reader.read(cls.size))
 
     @property

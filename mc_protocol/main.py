@@ -6,13 +6,12 @@ from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.protocols.v765.inbound.status import ServerInfoResponse
 from mc_protocol.protocols.v765.player import Player
 from mc_protocol.protocols.v765.server import Server
-from mc_protocol.schemas import StatusResponse
 
 
 @EventLoop.subscribe(ServerInfoResponse)
 async def server_status(data: SocketReader):
     instance = await ServerInfoResponse.from_stream(data)
-    print(StatusResponse.model_validate_json(instance.response.str))
+    print(instance)
 
 
 async def main():

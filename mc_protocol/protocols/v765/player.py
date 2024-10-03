@@ -91,8 +91,6 @@ class Player:
 
     async def _update_chunk_and_light_data(self, reader: SocketReader):
         data = await ChunkDataAndLightResponse.from_stream(reader)
-        with open('chunk_data.bin', 'wb') as f:
-            f.write(data.heightmaps)
 
     async def _set_threshold(self, reader: SocketReader):
         response = await CompressResponse.from_stream(reader)

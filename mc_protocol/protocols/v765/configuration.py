@@ -29,7 +29,10 @@ class Configuration:
 
     async def _registry_data(self, reader: SocketReader):
         data = await RegistryDataResponse.from_stream(reader)
-        print(data)
+        # TODO: Important to save this data for later use
+        # dimension_name = data[minecraft:dimension_type][*][name]
+        # min_y = data[minecraft:dimension_type][*][name][min_y]
+        # height = data[minecraft:dimension_type][*][name][height]
         # print(f'Registry data {len(data.registry_codec)=} bytes')
 
     async def _update_tags(self, reader: SocketReader):

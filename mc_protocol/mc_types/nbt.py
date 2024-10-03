@@ -176,7 +176,7 @@ class NBT:
     """
 
     @classmethod
-    async def from_stream(cls, reader: SocketReader, is_anonymous: bool = False) -> Compound:
+    async def from_stream(cls, reader: SocketReader, is_anonymous: bool = False) -> Tag:
         first_tag_id = await mc_types.Byte.from_stream(reader)
         if first_tag_id.int == TAG_COMPOUND:
             return await Compound.from_stream(reader, has_name=not is_anonymous)
