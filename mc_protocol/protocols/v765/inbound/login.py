@@ -1,9 +1,9 @@
+from mc_protocol.mc_types import UUID, String, VarInt
 from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import InboundEvent
-from mc_protocol.mc_types import *
 
-            
+
 class DisconnectResponse(InboundEvent):
     packet_id = 0x00
     state = ConnectionState.LOGIN
@@ -17,17 +17,19 @@ class DisconnectResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'DisconnectResponse':
         return cls(
-            reason=await String.from_stream(reader)
+            reason=await String.from_stream(reader),
         )
 
-        
+
 class LoginSuccessResponse(InboundEvent):
     packet_id = 0x02
     state = ConnectionState.LOGIN
 
     def __init__(
         self,
-        uuid: UUID, username: String, number_of_properties: VarInt,
+        uuid: UUID,
+        username: String,
+        number_of_properties: VarInt,
         # TODO: For properties we need Array type, but it's not implemented yet
     ) -> None:
         self.uuid = uuid
@@ -56,6 +58,5 @@ class CompressResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'CompressResponse':
         return cls(
-            threshold=await VarInt.from_stream(reader)
+            threshold=await VarInt.from_stream(reader),
         )
-

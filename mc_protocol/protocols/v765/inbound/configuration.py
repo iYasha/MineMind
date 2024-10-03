@@ -1,8 +1,7 @@
-from mc_protocol.mc_types import nbt
+from mc_protocol.mc_types import UUID, Int, Long, String, VarInt, nbt
 from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import InboundEvent
-from mc_protocol.mc_types import *
 
 
 class PluginMessageResponse(InboundEvent):
@@ -11,7 +10,8 @@ class PluginMessageResponse(InboundEvent):
 
     def __init__(
         self,
-        channel: String, data: bytes,
+        channel: String,
+        data: bytes,
         # ByteArray haven't been implemented yet, so we use bytes instead
     ) -> None:
         self.channel = channel
@@ -21,7 +21,7 @@ class PluginMessageResponse(InboundEvent):
     async def from_stream(cls, reader: SocketReader) -> 'PluginMessageResponse':
         return cls(
             channel=await String.from_stream(reader),
-            data=await reader.read(-1)
+            data=await reader.read(-1),
         )
 
 
@@ -43,10 +43,10 @@ class KeepAliveResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'KeepAliveResponse':
         return cls(
-            keep_alive_id=await Long.from_stream(reader)
+            keep_alive_id=await Long.from_stream(reader),
         )
 
-        
+
 class PingResponse(InboundEvent):
     packet_id = 0x04
     state = ConnectionState.CONFIGURATION
@@ -60,7 +60,7 @@ class PingResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'PingResponse':
         return cls(
-            id=await Int.from_stream(reader)
+            id=await Int.from_stream(reader),
         )
 
 
@@ -77,7 +77,7 @@ class RegistryDataResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'RegistryDataResponse':
         return cls(
-            registry_codec=await nbt.NBT.from_stream(reader, is_anonymous=True)
+            registry_codec=await nbt.NBT.from_stream(reader, is_anonymous=True),
         )
 
 
@@ -94,7 +94,7 @@ class RemoveResourcePackResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'RemoveResourcePackResponse':
         return cls(
-            uuid=await UUID.from_stream(reader)
+            uuid=await UUID.from_stream(reader),
         )
 
 
@@ -114,7 +114,7 @@ class FeatureFlagResponse(InboundEvent):
     async def from_stream(cls, reader: SocketReader) -> 'FeatureFlagResponse':
         return cls(
             total_features=await VarInt.from_stream(reader),
-            feature_flags=await reader.read(-1)
+            feature_flags=await reader.read(-1),
         )
 
 
@@ -135,6 +135,5 @@ class UpdateTagsResponse(InboundEvent):
     async def from_stream(cls, reader: SocketReader) -> 'UpdateTagsResponse':
         return cls(
             length=await VarInt.from_stream(reader),
-            tags=await reader.read(-1)
+            tags=await reader.read(-1),
         )
-

@@ -3,11 +3,12 @@ Named Binary Tag (NBT) data types.
 
 TODO: Make these types more usable by implementing dunder methods.
 """
+
 from struct import Struct
 from typing import TypeVar
 
 from mc_protocol import mc_types
-from mc_protocol.mc_types.base import SocketReader, MCType
+from mc_protocol.mc_types.base import MCType, SocketReader
 
 TAG_END = 0
 TAG_BYTE = 1
@@ -28,9 +29,9 @@ T = TypeVar('T')
 
 
 class Tag:
-    mc_type: MCType
+    mc_type: type[MCType]
 
-    def __init__(self, name: mc_types.String | None = None, value: T = None):
+    def __init__(self, name: mc_types.String | None = None, value: T | dict | list | MCType | bytes | None = None):
         self.name = name
         self.value = value
 
@@ -48,36 +49,36 @@ class Tag:
     async def from_stream(cls, reader: SocketReader, has_name: bool = True):
         return cls(
             name=await cls.get_name(reader) if has_name else None,
-            value=await cls.mc_type.from_stream(reader)
+            value=await cls.mc_type.from_stream(reader),
         )
 
 
 class Byte(Tag):
-    mc_type: MCType = mc_types.Byte
+    mc_type: type[MCType] = mc_types.Byte
 
 
 class Short(Tag):
-    mc_type: MCType = mc_types.Short
+    mc_type: type[MCType] = mc_types.Short
 
 
 class Int(Tag):
-    mc_type: MCType = mc_types.Int
+    mc_type: type[MCType] = mc_types.Int
 
 
 class Long(Tag):
-    mc_type: MCType = mc_types.Long
+    mc_type: type[MCType] = mc_types.Long
 
 
 class Float(Tag):
-    mc_type: MCType = mc_types.Float
+    mc_type: type[MCType] = mc_types.Float
 
 
 class Double(Tag):
-    mc_type: MCType = mc_types.Double
+    mc_type: type[MCType] = mc_types.Double
 
 
 class String(Tag):
-    mc_type: MCType = mc_types.String
+    mc_type: type[MCType] = mc_types.String
 
     @classmethod
     async def from_stream(cls, reader: SocketReader, has_name: bool = True):
@@ -87,19 +88,17 @@ class String(Tag):
 
 
 class ByteArray(Tag):
-
     @classmethod
     async def from_stream(cls, reader: SocketReader, has_name: bool = True):
         name = await cls.get_name(reader) if has_name else None
         length = await mc_types.Int.from_stream(reader)
         return cls(
             name=name,
-            value=await reader.read(length.int)
+            value=await reader.read(length.int),
         )
 
 
 class IntArray(Tag):
-
     @classmethod
     async def from_stream(cls, reader: SocketReader, has_name: bool = True):
         name = await cls.get_name(reader) if has_name else None
@@ -107,12 +106,11 @@ class IntArray(Tag):
         fmt = Struct(">" + str(length.int) + "i")
         return cls(
             name=name,
-            value=list(fmt.unpack(await reader.read(fmt.size)))
+            value=list(fmt.unpack(await reader.read(fmt.size))),
         )
 
 
 class LongArray(Tag):
-
     @classmethod
     async def from_stream(cls, reader: SocketReader, has_name: bool = True):
         name = await cls.get_name(reader) if has_name else None
@@ -120,13 +118,12 @@ class LongArray(Tag):
         fmt = Struct(">" + str(length.int) + "q")
         return cls(
             name=name,
-            value=list(fmt.unpack(await reader.read(fmt.size)))
+            value=list(fmt.unpack(await reader.read(fmt.size))),
         )
 
 
 class List(Tag):
-
-    def __init__(self, name: mc_types.String | None = None, value: T = None, tag_type_id: int = None):
+    def __init__(self, name: mc_types.String | None = None, value: list | None = None, tag_type_id: int | None = None):
         super().__init__(name, value)
         self.tag_type_id = tag_type_id
 
@@ -136,7 +133,9 @@ class List(Tag):
         tag_type_id = await mc_types.Byte.from_stream(reader)
         length = await mc_types.Int.from_stream(reader)
         tags = []
-        tag_type = TAG_REGISTRY[tag_type_id.int]
+        tag_type = TAG_REGISTRY.get(tag_type_id.int)
+        if tag_type is None:
+            raise ValueError('Unknown tag byte:', tag_type_id.int)
         for _ in range(length.int):
             tags.append(await tag_type.from_stream(reader, has_name=False))
         return cls(
@@ -147,7 +146,6 @@ class List(Tag):
 
 
 class Compound(Tag):
-
     @classmethod
     async def from_stream(cls, reader: SocketReader, has_name: bool = True):
         tags = {}
@@ -157,10 +155,10 @@ class Compound(Tag):
             if tag_byte.int == TAG_END:
                 break
 
-            if tag_byte.int not in TAG_REGISTRY or TAG_REGISTRY[tag_byte.int] is None:
+            tag_type = TAG_REGISTRY.get(tag_byte.int)
+            if tag_type is None:
                 raise ValueError('Unknown tag byte:', tag_byte.int)
 
-            tag_type = TAG_REGISTRY[tag_byte.int]
             tag = await tag_type.from_stream(reader)
             tags[tag.name] = tag
 
@@ -176,11 +174,13 @@ class NBT:
     """
 
     @classmethod
-    async def from_stream(cls, reader: SocketReader, is_anonymous: bool = False) -> Tag:
+    async def from_stream(cls, reader: SocketReader, is_anonymous: bool = False) -> T:
         first_tag_id = await mc_types.Byte.from_stream(reader)
         if first_tag_id.int == TAG_COMPOUND:
             return await Compound.from_stream(reader, has_name=not is_anonymous)
-        tag_type = TAG_REGISTRY[first_tag_id.int]
+        tag_type = TAG_REGISTRY.get(first_tag_id.int)
+        if tag_type is None:
+            raise ValueError('Unknown tag byte:', first_tag_id.int)
         return await tag_type.from_stream(reader, not is_anonymous)
 
 

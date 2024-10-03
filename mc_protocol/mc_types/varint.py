@@ -1,11 +1,9 @@
-from asyncio import StreamReader
 from typing import Tuple
 
-from mc_protocol.mc_types.base import AsyncBytesIO, MCType
+from mc_protocol.mc_types.base import MCType, SocketReader
 
 
 class VarInt(MCType):
-
     def __init__(self, value: int | bytes) -> None:
         self.int_value = None
         self.bytes_value = None
@@ -18,7 +16,7 @@ class VarInt(MCType):
             raise TypeError('Value must be an int or bytes object')
 
     @classmethod
-    async def from_stream(cls, reader: StreamReader | AsyncBytesIO) -> 'VarInt':
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'VarInt':
         num_read = 0
         result = 0
         while True:
@@ -96,11 +94,9 @@ class VarInt(MCType):
         return bytes(self)
 
     @property
-    def int(self) -> int:
-        return int(self)
-
-    @property
-    def hex(self) -> int:
+    def hex(self) -> str:
         return hex(int(self))
 
-
+    @property
+    def int(self) -> int:
+        return int(self)

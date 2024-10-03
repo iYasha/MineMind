@@ -1,6 +1,6 @@
 import asyncio
 import zlib
-from asyncio import StreamReader
+from asyncio import StreamReader, StreamWriter
 
 from mc_protocol.mc_types import VarInt
 from mc_protocol.mc_types.base import AsyncBytesIO
@@ -14,10 +14,11 @@ class Client:
         self.port = port
         self.protocol_version = protocol_version
 
-        self.reader = None
-        self.writer = None
+        # TODO: Incompatible types in assignment (expression has type "None", variable has type "StreamWriter")
+        self.reader: StreamReader = None  # type: ignore[assignment]
+        self.writer: StreamWriter = None  # type: ignore[assignment]
 
-        self.threshold = None
+        self.threshold: int | None = None
         self.state = ConnectionState.HANDSHAKING
 
     async def __aenter__(self):
@@ -50,23 +51,23 @@ class Client:
         await self.writer.drain()
 
     async def unpack_packet(self, reader: StreamReader) -> tuple[VarInt, AsyncBytesIO]:
-        packet_length = await VarInt.from_stream(reader)
+        total_packet_length = await VarInt.from_stream(reader)
         if self.threshold is None:
             packet_id = await VarInt.from_stream(reader)
-            data_length = packet_length.int - len(packet_id.bytes)
-            data = await reader.read(data_length)
+            data = await reader.read(total_packet_length.int - len(packet_id.bytes))
             return packet_id, AsyncBytesIO(data)
+
         data_length = await VarInt.from_stream(reader)
         if data_length.int != 0 and data_length.int >= self.threshold:
-            packet_length = packet_length.int - len(data_length.bytes)
+            packet_length = total_packet_length.int - len(data_length.bytes)
 
             compressed_data = await reader.read(packet_length)
             # print(f'COMPRESSED DATA: {packet_length}')
             while len(compressed_data) < packet_length:  # sometimes the rest of the data hasn't been transmited yet
                 # print(f'READ ADDITIONAL PACKAGES: {packet_length - len(compressed_data)}')
                 compressed_data += await reader.read(
-                    packet_length - len(compressed_data)
-                    )  # so we try to read what is missing
+                    packet_length - len(compressed_data),
+                )  # so we try to read what is missing
             decompressed_data = zlib.decompress(compressed_data)  # TODO: Possible issues with compressed response
             if data_length.int != len(decompressed_data):
                 raise zlib.error('Incorrect uncompressed data length')
@@ -75,6 +76,6 @@ class Client:
             return packet_id, buffer
         else:
             packet_id = await VarInt.from_stream(reader)
-            data_length = packet_length.int - len(packet_id.bytes) - len(data_length.bytes)
-            data = await reader.read(data_length)
+            packet_content_length = total_packet_length.int - len(packet_id.bytes) - len(data_length.bytes)
+            data = await reader.read(packet_content_length)
             return packet_id, AsyncBytesIO(data)

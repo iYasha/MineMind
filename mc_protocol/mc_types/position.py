@@ -1,4 +1,4 @@
-from mc_protocol.mc_types.base import SocketReader, MCType
+from mc_protocol.mc_types.base import MCType, SocketReader
 
 
 class Position(MCType):
@@ -10,7 +10,7 @@ class Position(MCType):
         self.z = z
 
     @classmethod
-    async def from_stream(cls, reader: SocketReader) -> 'Position':
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'Position':
         bytes_struct = await reader.read(8)
         val = int.from_bytes(bytes_struct, 'big', signed=False)
         x = val >> 38

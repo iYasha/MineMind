@@ -1,10 +1,24 @@
 from decimal import Decimal
 from typing import Optional
 
+from mc_protocol.mc_types import (
+    UUID,
+    Array,
+    Boolean,
+    Byte,
+    Double,
+    Float,
+    Int,
+    Long,
+    Position,
+    Short,
+    String,
+    UByte,
+    VarInt,
+)
 from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import InboundEvent
-from mc_protocol.mc_types import *
 
 
 class SpawnEntityResponse(InboundEvent):
@@ -13,8 +27,19 @@ class SpawnEntityResponse(InboundEvent):
 
     def __init__(
         self,
-        entity_id: VarInt, object_uuid: UUID, type: VarInt, x: Double, y: Double, z: Double, pitch: Byte, yaw: Byte,
-        head_pitch: Byte, object_data: VarInt, velocityx: Short, velocityy: Short, velocityz: Short,
+        entity_id: VarInt,
+        object_uuid: UUID,
+        type: VarInt,
+        x: Double,
+        y: Double,
+        z: Double,
+        pitch: Byte,
+        yaw: Byte,
+        head_pitch: Byte,
+        object_data: VarInt,
+        velocityx: Short,
+        velocityy: Short,
+        velocityz: Short,
     ) -> None:
         self.entity_id = entity_id
         self.object_uuid = object_uuid
@@ -30,7 +55,14 @@ class SpawnEntityResponse(InboundEvent):
         self.velocityy = velocityy
         self.velocityz = velocityz
 
-    def set_new_position(self, x: Double | None = None, y: Double | None = None, z: Double  | None = None, pitch: Byte | None = None, yaw: Byte | None = None):
+    def set_new_position(
+        self,
+        x: Double | None = None,
+        y: Double | None = None,
+        z: Double | None = None,
+        pitch: Byte | None = None,
+        yaw: Byte | None = None,
+    ):
         if x is not None:
             self.x = x
         if y is not None:
@@ -50,13 +82,19 @@ class SpawnEntityResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'SpawnEntityResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), object_uuid=await UUID.from_stream(reader),
-            type=await VarInt.from_stream(reader), x=await Double.from_stream(reader),
-            y=await Double.from_stream(reader), z=await Double.from_stream(reader),
-            pitch=await Byte.from_stream(reader), yaw=await Byte.from_stream(reader),
-            head_pitch=await Byte.from_stream(reader), object_data=await VarInt.from_stream(reader),
-            velocityx=await Short.from_stream(reader), velocityy=await Short.from_stream(reader),
-            velocityz=await Short.from_stream(reader)
+            entity_id=await VarInt.from_stream(reader),
+            object_uuid=await UUID.from_stream(reader),
+            type=await VarInt.from_stream(reader),
+            x=await Double.from_stream(reader),
+            y=await Double.from_stream(reader),
+            z=await Double.from_stream(reader),
+            pitch=await Byte.from_stream(reader),
+            yaw=await Byte.from_stream(reader),
+            head_pitch=await Byte.from_stream(reader),
+            object_data=await VarInt.from_stream(reader),
+            velocityx=await Short.from_stream(reader),
+            velocityy=await Short.from_stream(reader),
+            velocityz=await Short.from_stream(reader),
         )
 
 
@@ -66,7 +104,11 @@ class SpawnEntityExperienceOrbResponse(InboundEvent):
 
     def __init__(
         self,
-        entity_id: VarInt, x: Double, y: Double, z: Double, count: Short,
+        entity_id: VarInt,
+        x: Double,
+        y: Double,
+        z: Double,
+        count: Short,
     ) -> None:
         self.entity_id = entity_id
         self.x = x
@@ -77,9 +119,11 @@ class SpawnEntityExperienceOrbResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'SpawnEntityExperienceOrbResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), x=await Double.from_stream(reader),
-            y=await Double.from_stream(reader), z=await Double.from_stream(reader),
-            count=await Short.from_stream(reader)
+            entity_id=await VarInt.from_stream(reader),
+            x=await Double.from_stream(reader),
+            y=await Double.from_stream(reader),
+            z=await Double.from_stream(reader),
+            count=await Short.from_stream(reader),
         )
 
 
@@ -89,7 +133,8 @@ class AnimationResponse(InboundEvent):
 
     def __init__(
         self,
-        entity_id: VarInt, animation: UByte,
+        entity_id: VarInt,
+        animation: UByte,
     ) -> None:
         self.entity_id = entity_id
         self.animation = animation
@@ -97,17 +142,19 @@ class AnimationResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'AnimationResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), animation=await UByte.from_stream(reader)
+            entity_id=await VarInt.from_stream(reader),
+            animation=await UByte.from_stream(reader),
         )
 
 
 class DifficultyResponse(InboundEvent):
-    packet_id = 0x0b
+    packet_id = 0x0B
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        difficulty: UByte, difficulty_locked: Boolean,
+        difficulty: UByte,
+        difficulty_locked: Boolean,
     ) -> None:
         self.difficulty = difficulty
         self.difficulty_locked = difficulty_locked
@@ -115,12 +162,13 @@ class DifficultyResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'DifficultyResponse':
         return cls(
-            difficulty=await UByte.from_stream(reader), difficulty_locked=await Boolean.from_stream(reader)
+            difficulty=await UByte.from_stream(reader),
+            difficulty_locked=await Boolean.from_stream(reader),
         )
 
 
 class ChunkBatchFinishedResponse(InboundEvent):
-    packet_id = 0x0c
+    packet_id = 0x0C
     state = ConnectionState.PLAY
 
     def __init__(
@@ -132,12 +180,12 @@ class ChunkBatchFinishedResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'ChunkBatchFinishedResponse':
         return cls(
-            batch_size=await VarInt.from_stream(reader)
+            batch_size=await VarInt.from_stream(reader),
         )
 
 
 class ChunkBatchStartResponse(InboundEvent):
-    packet_id = 0x0d
+    packet_id = 0x0D
     state = ConnectionState.PLAY
 
 
@@ -154,7 +202,7 @@ class CloseWindowResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'CloseWindowResponse':
         return cls(
-            window_id=await UByte.from_stream(reader)
+            window_id=await UByte.from_stream(reader),
         )
 
 
@@ -164,7 +212,9 @@ class CraftProgressBarResponse(InboundEvent):
 
     def __init__(
         self,
-        window_id: UByte, property: Short, value: Short,
+        window_id: UByte,
+        property: Short,
+        value: Short,
     ) -> None:
         self.window_id = window_id
         self.property = property
@@ -173,8 +223,9 @@ class CraftProgressBarResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'CraftProgressBarResponse':
         return cls(
-            window_id=await UByte.from_stream(reader), property=await Short.from_stream(reader),
-            value=await Short.from_stream(reader)
+            window_id=await UByte.from_stream(reader),
+            property=await Short.from_stream(reader),
+            value=await Short.from_stream(reader),
         )
 
 
@@ -184,7 +235,8 @@ class SetCooldownResponse(InboundEvent):
 
     def __init__(
         self,
-        itemid: VarInt, cooldown_ticks: VarInt,
+        itemid: VarInt,
+        cooldown_ticks: VarInt,
     ) -> None:
         self.itemid = itemid
         self.cooldown_ticks = cooldown_ticks
@@ -192,17 +244,19 @@ class SetCooldownResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'SetCooldownResponse':
         return cls(
-            itemid=await VarInt.from_stream(reader), cooldown_ticks=await VarInt.from_stream(reader)
+            itemid=await VarInt.from_stream(reader),
+            cooldown_ticks=await VarInt.from_stream(reader),
         )
 
 
 class EntityStatusResponse(InboundEvent):
-    packet_id = 0x1d
+    packet_id = 0x1D
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        entity_id: Int, entity_status: Byte,
+        entity_id: Int,
+        entity_status: Byte,
     ) -> None:
         self.entity_id = entity_id
         self.entity_status = entity_status
@@ -210,17 +264,19 @@ class EntityStatusResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'EntityStatusResponse':
         return cls(
-            entity_id=await Int.from_stream(reader), entity_status=await Byte.from_stream(reader)
+            entity_id=await Int.from_stream(reader),
+            entity_status=await Byte.from_stream(reader),
         )
 
 
 class UnloadChunkResponse(InboundEvent):
-    packet_id = 0x1f
+    packet_id = 0x1F
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        chunkz: Int, chunkx: Int,
+        chunkz: Int,
+        chunkx: Int,
     ) -> None:
         self.chunkz = chunkz
         self.chunkx = chunkx
@@ -228,7 +284,8 @@ class UnloadChunkResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'UnloadChunkResponse':
         return cls(
-            chunkz=await Int.from_stream(reader), chunkx=await Int.from_stream(reader)
+            chunkz=await Int.from_stream(reader),
+            chunkx=await Int.from_stream(reader),
         )
 
 
@@ -285,7 +342,8 @@ class GameStateChangeResponse(InboundEvent):
 
     def __init__(
         self,
-        reason: UByte, game_mode: Float,
+        reason: UByte,
+        game_mode: Float,
     ) -> None:
         self.reason = reason
         self.game_mode = game_mode
@@ -293,7 +351,8 @@ class GameStateChangeResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'GameStateChangeResponse':
         return cls(
-            reason=await UByte.from_stream(reader), game_mode=await Float.from_stream(reader)
+            reason=await UByte.from_stream(reader),
+            game_mode=await Float.from_stream(reader),
         )
 
 
@@ -303,7 +362,9 @@ class OpenHorseWindowResponse(InboundEvent):
 
     def __init__(
         self,
-        window_id: UByte, nb_slots: VarInt, entity_id: Int,
+        window_id: UByte,
+        nb_slots: VarInt,
+        entity_id: Int,
     ) -> None:
         self.window_id = window_id
         self.nb_slots = nb_slots
@@ -312,8 +373,9 @@ class OpenHorseWindowResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'OpenHorseWindowResponse':
         return cls(
-            window_id=await UByte.from_stream(reader), nb_slots=await VarInt.from_stream(reader),
-            entity_id=await Int.from_stream(reader)
+            window_id=await UByte.from_stream(reader),
+            nb_slots=await VarInt.from_stream(reader),
+            entity_id=await Int.from_stream(reader),
         )
 
 
@@ -330,7 +392,7 @@ class KeepAliveResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'KeepAliveResponse':
         return cls(
-            keep_alive_id=await Long.from_stream(reader)
+            keep_alive_id=await Long.from_stream(reader),
         )
 
 
@@ -412,24 +474,41 @@ class LoginResponse(InboundEvent):
             death_location = None
         portal_cooldown = await VarInt.from_stream(reader)
         return cls(
-            entity_id=entity_id, is_hardcore=is_hardcore, dimension_count=dimension_count,
-            dimension_names=dimension_names, max_players=max_players, view_distance=view_distance,
-            simulation_distance=simulation_distance, reduced_debug_info=reduced_debug_info,
-            enable_respawn_screen=enable_respawn_screen, do_limited_crafting=do_limited_crafting,
-            dimension_type=dimension_type, dimension_name=dimension_name, hashed_seed=hashed_seed,
-            game_mode=game_mode, previous_game_mode=previous_game_mode, is_debug=is_debug, is_flat=is_flat,
-            has_death_location=has_death_location, portal_cooldown=portal_cooldown,
-            death_dimension_name=death_dimension_name, death_location=death_location
+            entity_id=entity_id,
+            is_hardcore=is_hardcore,
+            dimension_count=dimension_count,
+            dimension_names=dimension_names,
+            max_players=max_players,
+            view_distance=view_distance,
+            simulation_distance=simulation_distance,
+            reduced_debug_info=reduced_debug_info,
+            enable_respawn_screen=enable_respawn_screen,
+            do_limited_crafting=do_limited_crafting,
+            dimension_type=dimension_type,
+            dimension_name=dimension_name,
+            hashed_seed=hashed_seed,
+            game_mode=game_mode,
+            previous_game_mode=previous_game_mode,
+            is_debug=is_debug,
+            is_flat=is_flat,
+            has_death_location=has_death_location,
+            portal_cooldown=portal_cooldown,
+            death_dimension_name=death_dimension_name,
+            death_location=death_location,
         )
 
 
 class RelEntityMoveResponse(InboundEvent):
-    packet_id = 0x2c
+    packet_id = 0x2C
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        entity_id: VarInt, dx: Short, dy: Short, dz: Short, on_ground: Boolean,
+        entity_id: VarInt,
+        dx: Short,
+        dy: Short,
+        dz: Short,
+        on_ground: Boolean,
     ) -> None:
         self.entity_id = entity_id
         self.dx = dx
@@ -440,19 +519,27 @@ class RelEntityMoveResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'RelEntityMoveResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), dx=await Short.from_stream(reader),
-            dy=await Short.from_stream(reader), dz=await Short.from_stream(reader),
-            on_ground=await Boolean.from_stream(reader)
+            entity_id=await VarInt.from_stream(reader),
+            dx=await Short.from_stream(reader),
+            dy=await Short.from_stream(reader),
+            dz=await Short.from_stream(reader),
+            on_ground=await Boolean.from_stream(reader),
         )
 
 
 class EntityMoveLookResponse(InboundEvent):
-    packet_id = 0x2d
+    packet_id = 0x2D
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        entity_id: VarInt, dx: Short, dy: Short, dz: Short, yaw: Byte, pitch: Byte, on_ground: Boolean,
+        entity_id: VarInt,
+        dx: Short,
+        dy: Short,
+        dz: Short,
+        yaw: Byte,
+        pitch: Byte,
+        on_ground: Boolean,
     ) -> None:
         self.entity_id = entity_id
         self.dx = dx
@@ -465,19 +552,26 @@ class EntityMoveLookResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'EntityMoveLookResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), dx=await Short.from_stream(reader),
-            dy=await Short.from_stream(reader), dz=await Short.from_stream(reader), yaw=await Byte.from_stream(reader),
-            pitch=await Byte.from_stream(reader), on_ground=await Boolean.from_stream(reader)
+            entity_id=await VarInt.from_stream(reader),
+            dx=await Short.from_stream(reader),
+            dy=await Short.from_stream(reader),
+            dz=await Short.from_stream(reader),
+            yaw=await Byte.from_stream(reader),
+            pitch=await Byte.from_stream(reader),
+            on_ground=await Boolean.from_stream(reader),
         )
 
 
 class EntityLookResponse(InboundEvent):
-    packet_id = 0x2e
+    packet_id = 0x2E
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        entity_id: VarInt, yaw: Byte, pitch: Byte, on_ground: Boolean,
+        entity_id: VarInt,
+        yaw: Byte,
+        pitch: Byte,
+        on_ground: Boolean,
     ) -> None:
         self.entity_id = entity_id
         self.yaw = yaw
@@ -487,18 +581,24 @@ class EntityLookResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'EntityLookResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), yaw=await Byte.from_stream(reader),
-            pitch=await Byte.from_stream(reader), on_ground=await Boolean.from_stream(reader)
+            entity_id=await VarInt.from_stream(reader),
+            yaw=await Byte.from_stream(reader),
+            pitch=await Byte.from_stream(reader),
+            on_ground=await Boolean.from_stream(reader),
         )
 
 
 class VehicleMoveResponse(InboundEvent):
-    packet_id = 0x2f
+    packet_id = 0x2F
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        x: Double, y: Double, z: Double, yaw: Float, pitch: Float,
+        x: Double,
+        y: Double,
+        z: Double,
+        yaw: Float,
+        pitch: Float,
     ) -> None:
         self.x = x
         self.y = y
@@ -509,8 +609,11 @@ class VehicleMoveResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'VehicleMoveResponse':
         return cls(
-            x=await Double.from_stream(reader), y=await Double.from_stream(reader), z=await Double.from_stream(reader),
-            yaw=await Float.from_stream(reader), pitch=await Float.from_stream(reader)
+            x=await Double.from_stream(reader),
+            y=await Double.from_stream(reader),
+            z=await Double.from_stream(reader),
+            yaw=await Float.from_stream(reader),
+            pitch=await Float.from_stream(reader),
         )
 
 
@@ -527,7 +630,7 @@ class OpenBookResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'OpenBookResponse':
         return cls(
-            hand=await VarInt.from_stream(reader)
+            hand=await VarInt.from_stream(reader),
         )
 
 
@@ -537,7 +640,8 @@ class CraftRecipeResponse(InboundEvent):
 
     def __init__(
         self,
-        window_id: Byte, recipe: String,
+        window_id: Byte,
+        recipe: String,
     ) -> None:
         self.window_id = window_id
         self.recipe = recipe
@@ -545,7 +649,8 @@ class CraftRecipeResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'CraftRecipeResponse':
         return cls(
-            window_id=await Byte.from_stream(reader), recipe=await String.from_stream(reader)
+            window_id=await Byte.from_stream(reader),
+            recipe=await String.from_stream(reader),
         )
 
 
@@ -555,7 +660,9 @@ class AbilitiesResponse(InboundEvent):
 
     def __init__(
         self,
-        flags: Byte, flying_speed: Float, walking_speed: Float,
+        flags: Byte,
+        flying_speed: Float,
+        walking_speed: Float,
     ) -> None:
         self.flags = flags
         self.flying_speed = flying_speed
@@ -564,8 +671,9 @@ class AbilitiesResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'AbilitiesResponse':
         return cls(
-            flags=await Byte.from_stream(reader), flying_speed=await Float.from_stream(reader),
-            walking_speed=await Float.from_stream(reader)
+            flags=await Byte.from_stream(reader),
+            flying_speed=await Float.from_stream(reader),
+            walking_speed=await Float.from_stream(reader),
         )
 
 
@@ -582,7 +690,7 @@ class EndCombatEventResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'EndCombatEventResponse':
         return cls(
-            duration=await VarInt.from_stream(reader)
+            duration=await VarInt.from_stream(reader),
         )
 
 
@@ -607,17 +715,23 @@ class CombatDeathResponse(InboundEvent):
     async def from_stream(cls, reader: SocketReader) -> 'CombatDeathResponse':
         return cls(
             player_id=await VarInt.from_stream(reader),
-            message=await String.from_stream(reader)
+            message=await String.from_stream(reader),
         )
 
 
 class PositionResponse(InboundEvent):
-    packet_id = 0x3e
+    packet_id = 0x3E
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        x: Double, y: Double, z: Double, yaw: Float, pitch: Float, flags: Byte, teleport_id: VarInt,
+        x: Double,
+        y: Double,
+        z: Double,
+        yaw: Float,
+        pitch: Float,
+        flags: Byte,
+        teleport_id: VarInt,
     ) -> None:
         self.x = x
         self.y = y
@@ -630,9 +744,13 @@ class PositionResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'PositionResponse':
         return cls(
-            x=await Double.from_stream(reader), y=await Double.from_stream(reader), z=await Double.from_stream(reader),
-            yaw=await Float.from_stream(reader), pitch=await Float.from_stream(reader),
-            flags=await Byte.from_stream(reader), teleport_id=await VarInt.from_stream(reader)
+            x=await Double.from_stream(reader),
+            y=await Double.from_stream(reader),
+            z=await Double.from_stream(reader),
+            yaw=await Float.from_stream(reader),
+            pitch=await Float.from_stream(reader),
+            flags=await Byte.from_stream(reader),
+            teleport_id=await VarInt.from_stream(reader),
         )
 
 
@@ -642,7 +760,8 @@ class RemoveEntityEffectResponse(InboundEvent):
 
     def __init__(
         self,
-        entity_id: VarInt, effect_id: VarInt,
+        entity_id: VarInt,
+        effect_id: VarInt,
     ) -> None:
         self.entity_id = entity_id
         self.effect_id = effect_id
@@ -650,7 +769,8 @@ class RemoveEntityEffectResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'RemoveEntityEffectResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), effect_id=await VarInt.from_stream(reader)
+            entity_id=await VarInt.from_stream(reader),
+            effect_id=await VarInt.from_stream(reader),
         )
 
 
@@ -660,7 +780,8 @@ class ResetScoreResponse(InboundEvent):
 
     def __init__(
         self,
-        entity_name: String, objective_name: String,
+        entity_name: String,
+        objective_name: String,
     ) -> None:
         self.entity_name = entity_name
         self.objective_name = objective_name
@@ -668,7 +789,8 @@ class ResetScoreResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'ResetScoreResponse':
         return cls(
-            entity_name=await String.from_stream(reader), objective_name=await String.from_stream(reader)
+            entity_name=await String.from_stream(reader),
+            objective_name=await String.from_stream(reader),
         )
 
 
@@ -685,7 +807,7 @@ class RemoveResourcePackResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'RemoveResourcePackResponse':
         return cls(
-            uuid=await UUID.from_stream(reader)
+            uuid=await UUID.from_stream(reader),
         )
 
 
@@ -695,7 +817,8 @@ class EntityHeadRotationResponse(InboundEvent):
 
     def __init__(
         self,
-        entity_id: VarInt, head_yaw: Byte,
+        entity_id: VarInt,
+        head_yaw: Byte,
     ) -> None:
         self.entity_id = entity_id
         self.head_yaw = head_yaw
@@ -703,7 +826,8 @@ class EntityHeadRotationResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'EntityHeadRotationResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), head_yaw=await Byte.from_stream(reader)
+            entity_id=await VarInt.from_stream(reader),
+            head_yaw=await Byte.from_stream(reader),
         )
 
 
@@ -720,7 +844,7 @@ class CameraResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'CameraResponse':
         return cls(
-            camera_id=await VarInt.from_stream(reader)
+            camera_id=await VarInt.from_stream(reader),
         )
 
 
@@ -737,7 +861,7 @@ class HeldItemSlotResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'HeldItemSlotResponse':
         return cls(
-            slot=await Byte.from_stream(reader)
+            slot=await Byte.from_stream(reader),
         )
 
 
@@ -747,7 +871,8 @@ class UpdateViewPositionResponse(InboundEvent):
 
     def __init__(
         self,
-        chunkx: VarInt, chunkz: VarInt,
+        chunkx: VarInt,
+        chunkz: VarInt,
     ) -> None:
         self.chunkx = chunkx
         self.chunkz = chunkz
@@ -755,7 +880,8 @@ class UpdateViewPositionResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'UpdateViewPositionResponse':
         return cls(
-            chunkx=await VarInt.from_stream(reader), chunkz=await VarInt.from_stream(reader)
+            chunkx=await VarInt.from_stream(reader),
+            chunkz=await VarInt.from_stream(reader),
         )
 
 
@@ -772,7 +898,7 @@ class UpdateViewDistanceResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'UpdateViewDistanceResponse':
         return cls(
-            view_distance=await VarInt.from_stream(reader)
+            view_distance=await VarInt.from_stream(reader),
         )
 
 
@@ -782,7 +908,8 @@ class ScoreboardDisplayObjectiveResponse(InboundEvent):
 
     def __init__(
         self,
-        position: VarInt, name: String,
+        position: VarInt,
+        name: String,
     ) -> None:
         self.position = position
         self.name = name
@@ -790,7 +917,8 @@ class ScoreboardDisplayObjectiveResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'ScoreboardDisplayObjectiveResponse':
         return cls(
-            position=await VarInt.from_stream(reader), name=await String.from_stream(reader)
+            position=await VarInt.from_stream(reader),
+            name=await String.from_stream(reader),
         )
 
 
@@ -800,7 +928,8 @@ class AttachEntityResponse(InboundEvent):
 
     def __init__(
         self,
-        entity_id: Int, vehicle_id: Int,
+        entity_id: Int,
+        vehicle_id: Int,
     ) -> None:
         self.entity_id = entity_id
         self.vehicle_id = vehicle_id
@@ -808,7 +937,8 @@ class AttachEntityResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'AttachEntityResponse':
         return cls(
-            entity_id=await Int.from_stream(reader), vehicle_id=await Int.from_stream(reader)
+            entity_id=await Int.from_stream(reader),
+            vehicle_id=await Int.from_stream(reader),
         )
 
 
@@ -818,7 +948,10 @@ class EntityVelocityResponse(InboundEvent):
 
     def __init__(
         self,
-        entity_id: VarInt, velocityx: Short, velocityy: Short, velocityz: Short,
+        entity_id: VarInt,
+        velocityx: Short,
+        velocityy: Short,
+        velocityz: Short,
     ) -> None:
         self.entity_id = entity_id
         self.velocityx = velocityx
@@ -828,18 +961,22 @@ class EntityVelocityResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'EntityVelocityResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), velocityx=await Short.from_stream(reader),
-            velocityy=await Short.from_stream(reader), velocityz=await Short.from_stream(reader)
+            entity_id=await VarInt.from_stream(reader),
+            velocityx=await Short.from_stream(reader),
+            velocityy=await Short.from_stream(reader),
+            velocityz=await Short.from_stream(reader),
         )
 
 
 class ExperienceResponse(InboundEvent):
-    packet_id = 0x5a
+    packet_id = 0x5A
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        experience_bar: Float, level: VarInt, total_experience: VarInt,
+        experience_bar: Float,
+        level: VarInt,
+        total_experience: VarInt,
     ) -> None:
         self.experience_bar = experience_bar
         self.level = level
@@ -848,18 +985,21 @@ class ExperienceResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'ExperienceResponse':
         return cls(
-            experience_bar=await Float.from_stream(reader), level=await VarInt.from_stream(reader),
-            total_experience=await VarInt.from_stream(reader)
+            experience_bar=await Float.from_stream(reader),
+            level=await VarInt.from_stream(reader),
+            total_experience=await VarInt.from_stream(reader),
         )
 
 
 class UpdateHealthResponse(InboundEvent):
-    packet_id = 0x5b
+    packet_id = 0x5B
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        health: Float, food: VarInt, food_saturation: Float,
+        health: Float,
+        food: VarInt,
+        food_saturation: Float,
     ) -> None:
         self.health = health
         self.food = food
@@ -868,8 +1008,9 @@ class UpdateHealthResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'UpdateHealthResponse':
         return cls(
-            health=await Float.from_stream(reader), food=await VarInt.from_stream(reader),
-            food_saturation=await Float.from_stream(reader)
+            health=await Float.from_stream(reader),
+            food=await VarInt.from_stream(reader),
+            food_saturation=await Float.from_stream(reader),
         )
 
 
@@ -879,7 +1020,8 @@ class UpdateTimeResponse(InboundEvent):
 
     def __init__(
         self,
-        age: Long, time: Long,
+        age: Long,
+        time: Long,
     ) -> None:
         self.age = age
         self.time = time
@@ -887,7 +1029,8 @@ class UpdateTimeResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'UpdateTimeResponse':
         return cls(
-            age=await Long.from_stream(reader), time=await Long.from_stream(reader)
+            age=await Long.from_stream(reader),
+            time=await Long.from_stream(reader),
         )
 
 
@@ -906,17 +1049,20 @@ class SetDefaultSpawnPositionResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'SetDefaultSpawnPositionResponse':
         return cls(
-            location=await Position.from_stream(reader), angle=await Float.from_stream(reader)
+            location=await Position.from_stream(reader),
+            angle=await Float.from_stream(reader),
         )
 
 
 class CollectResponse(InboundEvent):
-    packet_id = 0x6c
+    packet_id = 0x6C
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        collected_entity_id: VarInt, collector_entity_id: VarInt, pickup_item_count: VarInt,
+        collected_entity_id: VarInt,
+        collector_entity_id: VarInt,
+        pickup_item_count: VarInt,
     ) -> None:
         self.collected_entity_id = collected_entity_id
         self.collector_entity_id = collector_entity_id
@@ -925,18 +1071,25 @@ class CollectResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'CollectResponse':
         return cls(
-            collected_entity_id=await VarInt.from_stream(reader), collector_entity_id=await VarInt.from_stream(reader),
-            pickup_item_count=await VarInt.from_stream(reader)
+            collected_entity_id=await VarInt.from_stream(reader),
+            collector_entity_id=await VarInt.from_stream(reader),
+            pickup_item_count=await VarInt.from_stream(reader),
         )
 
 
 class EntityTeleportResponse(InboundEvent):
-    packet_id = 0x6d
+    packet_id = 0x6D
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        entity_id: VarInt, x: Double, y: Double, z: Double, yaw: Byte, pitch: Byte, on_ground: Boolean,
+        entity_id: VarInt,
+        x: Double,
+        y: Double,
+        z: Double,
+        yaw: Byte,
+        pitch: Byte,
+        on_ground: Boolean,
     ) -> None:
         self.entity_id = entity_id
         self.x = x
@@ -949,9 +1102,13 @@ class EntityTeleportResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'EntityTeleportResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), x=await Double.from_stream(reader),
-            y=await Double.from_stream(reader), z=await Double.from_stream(reader), yaw=await Byte.from_stream(reader),
-            pitch=await Byte.from_stream(reader), on_ground=await Boolean.from_stream(reader)
+            entity_id=await VarInt.from_stream(reader),
+            x=await Double.from_stream(reader),
+            y=await Double.from_stream(reader),
+            z=await Double.from_stream(reader),
+            yaw=await Byte.from_stream(reader),
+            pitch=await Byte.from_stream(reader),
+            on_ground=await Boolean.from_stream(reader),
         )
 
 
@@ -968,7 +1125,7 @@ class SelectAdvancementTabResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'SelectAdvancementTabResponse':
         return cls(
-            id=await String.from_stream(reader)
+            id=await String.from_stream(reader),
         )
 
 
@@ -985,7 +1142,7 @@ class AcknowledgePlayerDiggingResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'AcknowledgePlayerDiggingResponse':
         return cls(
-            sequence_id=await VarInt.from_stream(reader)
+            sequence_id=await VarInt.from_stream(reader),
         )
 
 
@@ -1006,12 +1163,12 @@ class RemoveEntityResponse(InboundEvent):
         count = await VarInt.from_stream(reader)
         return cls(
             count=count,
-            entity_ids=await Array[VarInt].from_stream(reader, count.int, VarInt)
+            entity_ids=await Array[VarInt].from_stream(reader, count.int, VarInt),
         )
 
 
 class ClearTitlesResponse(InboundEvent):
-    packet_id = 0x0f
+    packet_id = 0x0F
     state = ConnectionState.PLAY
 
     def __init__(
@@ -1023,7 +1180,7 @@ class ClearTitlesResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'ClearTitlesResponse':
         return cls(
-            reset=await Boolean.from_stream(reader)
+            reset=await Boolean.from_stream(reader),
         )
 
 
@@ -1033,8 +1190,14 @@ class InitializeWorldBorderResponse(InboundEvent):
 
     def __init__(
         self,
-        x: Double, z: Double, old_diameter: Double, new_diameter: Double, speed: VarInt,
-        portal_teleport_boundary: VarInt, warning_blocks: VarInt, warning_time: VarInt,
+        x: Double,
+        z: Double,
+        old_diameter: Double,
+        new_diameter: Double,
+        speed: VarInt,
+        portal_teleport_boundary: VarInt,
+        warning_blocks: VarInt,
+        warning_time: VarInt,
     ) -> None:
         self.x = x
         self.z = z
@@ -1048,20 +1211,25 @@ class InitializeWorldBorderResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'InitializeWorldBorderResponse':
         return cls(
-            x=await Double.from_stream(reader), z=await Double.from_stream(reader),
-            old_diameter=await Double.from_stream(reader), new_diameter=await Double.from_stream(reader),
-            speed=await VarInt.from_stream(reader), portal_teleport_boundary=await VarInt.from_stream(reader),
-            warning_blocks=await VarInt.from_stream(reader), warning_time=await VarInt.from_stream(reader)
+            x=await Double.from_stream(reader),
+            z=await Double.from_stream(reader),
+            old_diameter=await Double.from_stream(reader),
+            new_diameter=await Double.from_stream(reader),
+            speed=await VarInt.from_stream(reader),
+            portal_teleport_boundary=await VarInt.from_stream(reader),
+            warning_blocks=await VarInt.from_stream(reader),
+            warning_time=await VarInt.from_stream(reader),
         )
 
 
 class WorldBorderCenterResponse(InboundEvent):
-    packet_id = 0x4b
+    packet_id = 0x4B
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        x: Double, z: Double,
+        x: Double,
+        z: Double,
     ) -> None:
         self.x = x
         self.z = z
@@ -1069,17 +1237,20 @@ class WorldBorderCenterResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'WorldBorderCenterResponse':
         return cls(
-            x=await Double.from_stream(reader), z=await Double.from_stream(reader)
+            x=await Double.from_stream(reader),
+            z=await Double.from_stream(reader),
         )
 
 
 class WorldBorderLerpSizeResponse(InboundEvent):
-    packet_id = 0x4c
+    packet_id = 0x4C
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        old_diameter: Double, new_diameter: Double, speed: VarInt,
+        old_diameter: Double,
+        new_diameter: Double,
+        speed: VarInt,
     ) -> None:
         self.old_diameter = old_diameter
         self.new_diameter = new_diameter
@@ -1088,13 +1259,14 @@ class WorldBorderLerpSizeResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'WorldBorderLerpSizeResponse':
         return cls(
-            old_diameter=await Double.from_stream(reader), new_diameter=await Double.from_stream(reader),
-            speed=await VarInt.from_stream(reader)
+            old_diameter=await Double.from_stream(reader),
+            new_diameter=await Double.from_stream(reader),
+            speed=await VarInt.from_stream(reader),
         )
 
 
 class WorldBorderSizeResponse(InboundEvent):
-    packet_id = 0x4d
+    packet_id = 0x4D
     state = ConnectionState.PLAY
 
     def __init__(
@@ -1106,12 +1278,12 @@ class WorldBorderSizeResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'WorldBorderSizeResponse':
         return cls(
-            diameter=await Double.from_stream(reader)
+            diameter=await Double.from_stream(reader),
         )
 
 
 class WorldBorderWarningDelayResponse(InboundEvent):
-    packet_id = 0x4e
+    packet_id = 0x4E
     state = ConnectionState.PLAY
 
     def __init__(
@@ -1123,12 +1295,12 @@ class WorldBorderWarningDelayResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'WorldBorderWarningDelayResponse':
         return cls(
-            warning_time=await VarInt.from_stream(reader)
+            warning_time=await VarInt.from_stream(reader),
         )
 
 
 class WorldBorderWarningReachResponse(InboundEvent):
-    packet_id = 0x4f
+    packet_id = 0x4F
     state = ConnectionState.PLAY
 
     def __init__(
@@ -1140,11 +1312,11 @@ class WorldBorderWarningReachResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'WorldBorderWarningReachResponse':
         return cls(
-            warning_blocks=await VarInt.from_stream(reader)
+            warning_blocks=await VarInt.from_stream(reader),
         )
 
 
-class PingResponse(InboundEvent):
+class PingOldResponse(InboundEvent):
     packet_id = 0x33
     state = ConnectionState.PLAY
 
@@ -1155,9 +1327,9 @@ class PingResponse(InboundEvent):
         self.id = id
 
     @classmethod
-    async def from_stream(cls, reader: SocketReader) -> 'PingResponse':
+    async def from_stream(cls, reader: SocketReader) -> 'PingOldResponse':
         return cls(
-            id=await Int.from_stream(reader)
+            id=await Int.from_stream(reader),
         )
 
 
@@ -1174,7 +1346,7 @@ class PingResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'PingResponse':
         return cls(
-            id=await Long.from_stream(reader)
+            id=await Long.from_stream(reader),
         )
 
 
@@ -1184,7 +1356,9 @@ class SetTitleTimeResponse(InboundEvent):
 
     def __init__(
         self,
-        fade_in: Int, stay: Int, fade_out: Int,
+        fade_in: Int,
+        stay: Int,
+        fade_out: Int,
     ) -> None:
         self.fade_in = fade_in
         self.stay = stay
@@ -1193,8 +1367,9 @@ class SetTitleTimeResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'SetTitleTimeResponse':
         return cls(
-            fade_in=await Int.from_stream(reader), stay=await Int.from_stream(reader),
-            fade_out=await Int.from_stream(reader)
+            fade_in=await Int.from_stream(reader),
+            stay=await Int.from_stream(reader),
+            fade_out=await Int.from_stream(reader),
         )
 
 
@@ -1211,7 +1386,7 @@ class SimulationDistanceResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'SimulationDistanceResponse':
         return cls(
-            distance=await VarInt.from_stream(reader)
+            distance=await VarInt.from_stream(reader),
         )
 
 
@@ -1221,7 +1396,8 @@ class HurtAnimationResponse(InboundEvent):
 
     def __init__(
         self,
-        entity_id: VarInt, yaw: Float,
+        entity_id: VarInt,
+        yaw: Float,
     ) -> None:
         self.entity_id = entity_id
         self.yaw = yaw
@@ -1229,7 +1405,8 @@ class HurtAnimationResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'HurtAnimationResponse':
         return cls(
-            entity_id=await VarInt.from_stream(reader), yaw=await Float.from_stream(reader)
+            entity_id=await VarInt.from_stream(reader),
+            yaw=await Float.from_stream(reader),
         )
 
 
@@ -1239,12 +1416,13 @@ class StartConfigurationResponse(InboundEvent):
 
 
 class SetTickingStateResponse(InboundEvent):
-    packet_id = 0x6e
+    packet_id = 0x6E
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        tick_rate: Float, is_frozen: Boolean,
+        tick_rate: Float,
+        is_frozen: Boolean,
     ) -> None:
         self.tick_rate = tick_rate
         self.is_frozen = is_frozen
@@ -1252,12 +1430,13 @@ class SetTickingStateResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'SetTickingStateResponse':
         return cls(
-            tick_rate=await Float.from_stream(reader), is_frozen=await Boolean.from_stream(reader)
+            tick_rate=await Float.from_stream(reader),
+            is_frozen=await Boolean.from_stream(reader),
         )
 
 
 class StepTickResponse(InboundEvent):
-    packet_id = 0x6f
+    packet_id = 0x6F
     state = ConnectionState.PLAY
 
     def __init__(
@@ -1269,7 +1448,7 @@ class StepTickResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'StepTickResponse':
         return cls(
-            tick_steps=await VarInt.from_stream(reader)
+            tick_steps=await VarInt.from_stream(reader),
         )
 
 
@@ -1297,7 +1476,6 @@ class ChunkDataAndLightResponse(InboundEvent):
         chunk_x: Int,
         chunk_z: Int,
         heightmaps: bytes,
-
     ) -> None:
         self.chunk_x = chunk_x
         self.chunk_z = chunk_z
@@ -1308,5 +1486,5 @@ class ChunkDataAndLightResponse(InboundEvent):
         return cls(
             chunk_x=await Int.from_stream(reader),
             chunk_z=await Int.from_stream(reader),
-            heightmaps=await reader.read(-1)
+            heightmaps=await reader.read(-1),
         )

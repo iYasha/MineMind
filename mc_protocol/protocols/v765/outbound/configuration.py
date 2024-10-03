@@ -1,15 +1,22 @@
+from mc_protocol.mc_types import UUID, Boolean, Byte, Int, Long, String, UByte, VarInt
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import OutboundEvent
-from mc_protocol.mc_types import *
 
-        
+
 class SettingsRequest(OutboundEvent):
     packet_id = 0x00
     state = ConnectionState.CONFIGURATION
 
     def __init__(
         self,
-        locale: String, view_distance: Byte, chat_flags: VarInt, chat_colors: Boolean, skin_parts: UByte, main_hand: VarInt, enable_text_filtering: Boolean, enable_server_listing: Boolean,
+        locale: String,
+        view_distance: Byte,
+        chat_flags: VarInt,
+        chat_colors: Boolean,
+        skin_parts: UByte,
+        main_hand: VarInt,
+        enable_text_filtering: Boolean,
+        enable_server_listing: Boolean,
     ) -> None:
         self.locale = locale
         self.view_distance = view_distance
@@ -22,14 +29,23 @@ class SettingsRequest(OutboundEvent):
 
     @property
     def payload(self) -> bytes:
-        return self.locale.bytes + self.view_distance.bytes + self.chat_flags.bytes + self.chat_colors.bytes + self.skin_parts.bytes + self.main_hand.bytes + self.enable_text_filtering.bytes + self.enable_server_listing.bytes
+        return (
+            self.locale.bytes
+            + self.view_distance.bytes
+            + self.chat_flags.bytes
+            + self.chat_colors.bytes
+            + self.skin_parts.bytes
+            + self.main_hand.bytes
+            + self.enable_text_filtering.bytes
+            + self.enable_server_listing.bytes
+        )
 
-        
+
 class FinishConfigurationRequest(OutboundEvent):
     packet_id = 0x02
     state = ConnectionState.CONFIGURATION
 
-            
+
 class KeepAliveRequest(OutboundEvent):
     packet_id = 0x03
     state = ConnectionState.CONFIGURATION
@@ -44,7 +60,7 @@ class KeepAliveRequest(OutboundEvent):
     def payload(self) -> bytes:
         return self.keep_alive_id.bytes
 
-        
+
 class PongRequest(OutboundEvent):
     packet_id = 0x04
     state = ConnectionState.CONFIGURATION
@@ -59,14 +75,15 @@ class PongRequest(OutboundEvent):
     def payload(self) -> bytes:
         return self.id.bytes
 
-        
+
 class ResourcePackReceiveRequest(OutboundEvent):
     packet_id = 0x05
     state = ConnectionState.CONFIGURATION
 
     def __init__(
         self,
-        uuid: UUID, result: VarInt,
+        uuid: UUID,
+        result: VarInt,
     ) -> None:
         self.uuid = uuid
         self.result = result
@@ -74,5 +91,3 @@ class ResourcePackReceiveRequest(OutboundEvent):
     @property
     def payload(self) -> bytes:
         return self.uuid.bytes + self.result.bytes
-
-        

@@ -1,13 +1,13 @@
+from mc_protocol.mc_types import Long
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import OutboundEvent
-from mc_protocol.mc_types import *
 
-        
+
 class PingStartRequest(OutboundEvent):
     packet_id = 0x00
     state = ConnectionState.STATUS
 
-            
+
 class PingRequest(OutboundEvent):
     packet_id = 0x01
     state = ConnectionState.STATUS
@@ -21,5 +21,3 @@ class PingRequest(OutboundEvent):
     @property
     def payload(self) -> bytes:
         return self.time.bytes
-
-        

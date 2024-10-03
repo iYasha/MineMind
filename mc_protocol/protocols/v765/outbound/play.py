@@ -2,9 +2,9 @@ import math
 from enum import Enum
 from typing import Optional
 
+from mc_protocol.mc_types import UUID, Boolean, Byte, Double, Float, Int, Long, Short, String, UByte, VarInt
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import OutboundEvent
-from mc_protocol.mc_types import *
 
 
 class TeleportConfirmRequest(OutboundEvent):
@@ -58,7 +58,8 @@ class QueryEntityNbtRequest(OutboundEvent):
 
     def __init__(
         self,
-        transaction_id: VarInt, entity_id: VarInt,
+        transaction_id: VarInt,
+        entity_id: VarInt,
     ) -> None:
         self.transaction_id = transaction_id
         self.entity_id = entity_id
@@ -94,18 +95,18 @@ class ChatMessageRequest(OutboundEvent):
     @property
     def payload(self) -> bytes:
         return (
-            self.message.bytes +
-            self.timestamp.bytes +
-            self.salt.bytes +
-            self.has_signature.bytes +
-            self.signature +
-            self.message_count.bytes +
-            bytearray(math.ceil(20 / 8))
+            self.message.bytes
+            + self.timestamp.bytes
+            + self.salt.bytes
+            + self.has_signature.bytes
+            + self.signature
+            + self.message_count.bytes
+            + bytearray(math.ceil(20 / 8))
         )
 
 
 class PickItemRequest(OutboundEvent):
-    packet_id = 0x1d
+    packet_id = 0x1D
     state = ConnectionState.PLAY
 
     def __init__(
@@ -135,7 +136,7 @@ class NameItemRequest(OutboundEvent):
 
 
 class SelectTradeRequest(OutboundEvent):
-    packet_id = 0x2a
+    packet_id = 0x2A
     state = ConnectionState.PLAY
 
     def __init__(
@@ -150,12 +151,13 @@ class SelectTradeRequest(OutboundEvent):
 
 
 class SetBeaconEffectRequest(OutboundEvent):
-    packet_id = 0x2b
+    packet_id = 0x2B
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        primary_effect: VarInt, secondary_effect: VarInt,
+        primary_effect: VarInt,
+        secondary_effect: VarInt,
     ) -> None:
         self.primary_effect = primary_effect
         self.secondary_effect = secondary_effect
@@ -166,12 +168,14 @@ class SetBeaconEffectRequest(OutboundEvent):
 
 
 class UpdateCommandBlockMinecartRequest(OutboundEvent):
-    packet_id = 0x2e
+    packet_id = 0x2E
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        entity_id: VarInt, command: String, track_output: Boolean,
+        entity_id: VarInt,
+        command: String,
+        track_output: Boolean,
     ) -> None:
         self.entity_id = entity_id
         self.command = command
@@ -183,12 +187,13 @@ class UpdateCommandBlockMinecartRequest(OutboundEvent):
 
 
 class TabCompleteRequest(OutboundEvent):
-    packet_id = 0x0a
+    packet_id = 0x0A
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        transaction_id: VarInt, text: String,
+        transaction_id: VarInt,
+        text: String,
     ) -> None:
         self.transaction_id = transaction_id
         self.text = text
@@ -219,8 +224,14 @@ class SettingsRequest(OutboundEvent):
 
     def __init__(
         self,
-        locale: String, view_distance: Byte, chat_flags: VarInt, chat_colors: Boolean, skin_parts: UByte,
-        main_hand: VarInt, enable_text_filtering: Boolean, enable_server_listing: Boolean,
+        locale: String,
+        view_distance: Byte,
+        chat_flags: VarInt,
+        chat_colors: Boolean,
+        skin_parts: UByte,
+        main_hand: VarInt,
+        enable_text_filtering: Boolean,
+        enable_server_listing: Boolean,
     ) -> None:
         self.locale = locale
         self.view_distance = view_distance
@@ -233,16 +244,26 @@ class SettingsRequest(OutboundEvent):
 
     @property
     def payload(self) -> bytes:
-        return self.locale.bytes + self.view_distance.bytes + self.chat_flags.bytes + self.chat_colors.bytes + self.skin_parts.bytes + self.main_hand.bytes + self.enable_text_filtering.bytes + self.enable_server_listing.bytes
+        return (
+            self.locale.bytes
+            + self.view_distance.bytes
+            + self.chat_flags.bytes
+            + self.chat_colors.bytes
+            + self.skin_parts.bytes
+            + self.main_hand.bytes
+            + self.enable_text_filtering.bytes
+            + self.enable_server_listing.bytes
+        )
 
 
 class EnchantItemRequest(OutboundEvent):
-    packet_id = 0x0c
+    packet_id = 0x0C
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        window_id: Byte, enchantment: Byte,
+        window_id: Byte,
+        enchantment: Byte,
     ) -> None:
         self.window_id = window_id
         self.enchantment = enchantment
@@ -253,7 +274,7 @@ class EnchantItemRequest(OutboundEvent):
 
 
 class CloseWindowRequest(OutboundEvent):
-    packet_id = 0x0e
+    packet_id = 0x0E
     state = ConnectionState.PLAY
 
     def __init__(
@@ -303,7 +324,10 @@ class PositionRequest(OutboundEvent):
 
     def __init__(
         self,
-        x: Double, y: Double, z: Double, on_ground: Boolean,
+        x: Double,
+        y: Double,
+        z: Double,
+        on_ground: Boolean,
     ) -> None:
         self.x = x
         self.y = y
@@ -321,7 +345,12 @@ class PositionLookRequest(OutboundEvent):
 
     def __init__(
         self,
-        x: Double, y: Double, z: Double, yaw: Float, pitch: Float, on_ground: Boolean,
+        x: Double,
+        y: Double,
+        z: Double,
+        yaw: Float,
+        pitch: Float,
+        on_ground: Boolean,
     ) -> None:
         self.x = x
         self.y = y
@@ -341,7 +370,9 @@ class LookRequest(OutboundEvent):
 
     def __init__(
         self,
-        yaw: Float, pitch: Float, on_ground: Boolean,
+        yaw: Float,
+        pitch: Float,
+        on_ground: Boolean,
     ) -> None:
         self.yaw = yaw
         self.pitch = pitch
@@ -353,7 +384,7 @@ class LookRequest(OutboundEvent):
 
 
 class FlyingRequest(OutboundEvent):
-    packet_id = 0x1a
+    packet_id = 0x1A
     state = ConnectionState.PLAY
 
     def __init__(
@@ -368,12 +399,16 @@ class FlyingRequest(OutboundEvent):
 
 
 class VehicleMoveRequest(OutboundEvent):
-    packet_id = 0x1b
+    packet_id = 0x1B
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        x: Double, y: Double, z: Double, yaw: Float, pitch: Float,
+        x: Double,
+        y: Double,
+        z: Double,
+        yaw: Float,
+        pitch: Float,
     ) -> None:
         self.x = x
         self.y = y
@@ -387,12 +422,13 @@ class VehicleMoveRequest(OutboundEvent):
 
 
 class SteerBoatRequest(OutboundEvent):
-    packet_id = 0x1c
+    packet_id = 0x1C
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        left_paddle: Boolean, right_paddle: Boolean,
+        left_paddle: Boolean,
+        right_paddle: Boolean,
     ) -> None:
         self.left_paddle = left_paddle
         self.right_paddle = right_paddle
@@ -403,12 +439,14 @@ class SteerBoatRequest(OutboundEvent):
 
 
 class CraftRecipeRequest(OutboundEvent):
-    packet_id = 0x1f
+    packet_id = 0x1F
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        window_id: Byte, recipe: String, make_all: Boolean,
+        window_id: Byte,
+        recipe: String,
+        make_all: Boolean,
     ) -> None:
         self.window_id = window_id
         self.recipe = recipe
@@ -440,7 +478,9 @@ class EntityActionRequest(OutboundEvent):
 
     def __init__(
         self,
-        entity_id: VarInt, action_id: VarInt, jump_boost: VarInt,
+        entity_id: VarInt,
+        action_id: VarInt,
+        jump_boost: VarInt,
     ) -> None:
         self.entity_id = entity_id
         self.action_id = action_id
@@ -457,7 +497,9 @@ class SteerVehicleRequest(OutboundEvent):
 
     def __init__(
         self,
-        sideways: Float, forward: Float, jump: UByte,
+        sideways: Float,
+        forward: Float,
+        jump: UByte,
     ) -> None:
         self.sideways = sideways
         self.forward = forward
@@ -489,7 +531,9 @@ class RecipeBookRequest(OutboundEvent):
 
     def __init__(
         self,
-        book_id: VarInt, book_open: Boolean, filter_active: Boolean,
+        book_id: VarInt,
+        book_open: Boolean,
+        filter_active: Boolean,
     ) -> None:
         self.book_id = book_id
         self.book_open = book_open
@@ -506,7 +550,8 @@ class ResourcePackReceiveRequest(OutboundEvent):
 
     def __init__(
         self,
-        uuid: UUID, result: VarInt,
+        uuid: UUID,
+        result: VarInt,
     ) -> None:
         self.uuid = uuid
         self.result = result
@@ -517,7 +562,7 @@ class ResourcePackReceiveRequest(OutboundEvent):
 
 
 class HeldItemSlotRequest(OutboundEvent):
-    packet_id = 0x2c
+    packet_id = 0x2C
     state = ConnectionState.PLAY
 
     def __init__(
@@ -573,7 +618,8 @@ class UseItemRequest(OutboundEvent):
 
     def __init__(
         self,
-        hand: VarInt, sequence: VarInt,
+        hand: VarInt,
+        sequence: VarInt,
     ) -> None:
         self.hand = hand
         self.sequence = sequence
@@ -643,23 +689,23 @@ class InteractRequest(OutboundEvent):
     @property
     def payload(self) -> bytes:
         return (
-            self.entity_id.bytes +
-            VarInt(self.interact_type).bytes +
-            (self.target_x.bytes if self.target_x is not None else b'') +
-            (self.target_y.bytes if self.target_y is not None else b'') +
-            (self.target_z.bytes if self.target_z is not None else b'') +
-            (self.hand.bytes if self.hand is not None else b'') +
-            self.sneaking.bytes
+            self.entity_id.bytes
+            + VarInt(self.interact_type).bytes
+            + (self.target_x.bytes if self.target_x is not None else b'')
+            + (self.target_y.bytes if self.target_y is not None else b'')
+            + (self.target_z.bytes if self.target_z is not None else b'')
+            + (self.hand.bytes if self.hand is not None else b'')
+            + self.sneaking.bytes
         )
 
 
 class ConfigurationAcknowledgedRequest(OutboundEvent):
-    packet_id = 0x0b
+    packet_id = 0x0B
     state = ConnectionState.PLAY
 
 
 class PingRequest(OutboundEvent):
-    packet_id = 0x1e
+    packet_id = 0x1E
     state = ConnectionState.PLAY
 
     def __init__(
@@ -674,17 +720,19 @@ class PingRequest(OutboundEvent):
 
 
 class SetSlotStateRequest(OutboundEvent):
-    packet_id = 0x0f
+    packet_id = 0x0F
     state = ConnectionState.PLAY
 
     def __init__(
         self,
-        slot_id: VarInt, window_id: VarInt, state: Boolean,
+        slot_id: VarInt,
+        window_id: VarInt,
+        slot_state: Boolean,
     ) -> None:
         self.slot_id = slot_id
         self.window_id = window_id
-        self.state = state
+        self.slot_state = slot_state
 
     @property
     def payload(self) -> bytes:
-        return self.slot_id.bytes + self.window_id.bytes + self.state.bytes
+        return self.slot_id.bytes + self.window_id.bytes + self.slot_state.bytes

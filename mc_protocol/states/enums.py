@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class HandshakingNextState(Enum):
     STATUS = b'\x01'
     LOGIN = b'\x02'
@@ -12,4 +13,3 @@ class ConnectionState(str, Enum):
     LOGIN = 'login'
     CONFIGURATION = 'configuration'
     PLAY = 'play'
-

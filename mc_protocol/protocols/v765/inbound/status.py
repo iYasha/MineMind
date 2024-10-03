@@ -1,9 +1,9 @@
+from mc_protocol.mc_types import Long, String
 from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import InboundEvent
-from mc_protocol.mc_types import *
 
-            
+
 class ServerInfoResponse(InboundEvent):
     packet_id = 0x00
     state = ConnectionState.STATUS
@@ -17,10 +17,10 @@ class ServerInfoResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'ServerInfoResponse':
         return cls(
-            response=await String.from_stream(reader)
+            response=await String.from_stream(reader),
         )
 
-        
+
 class PingResponse(InboundEvent):
     packet_id = 0x01
     state = ConnectionState.STATUS
@@ -34,7 +34,5 @@ class PingResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'PingResponse':
         return cls(
-            time=await Long.from_stream(reader)
+            time=await Long.from_stream(reader),
         )
-
-        

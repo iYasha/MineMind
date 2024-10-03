@@ -1,11 +1,9 @@
 import uuid
-from asyncio import StreamReader
 
-from mc_protocol.mc_types.base import AsyncBytesIO, MCType
+from mc_protocol.mc_types.base import MCType, SocketReader
 
 
 class UUID(MCType):
-
     def __init__(self, value: uuid.UUID | bytes) -> None:
         self.uuid_value = None
         self.bytes_value = None
@@ -22,7 +20,7 @@ class UUID(MCType):
         return self.bytes_value
 
     @classmethod
-    async def from_stream(cls, reader: StreamReader | AsyncBytesIO) -> 'UUID':
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'UUID':
         return cls(uuid.UUID(bytes=await reader.read(16)))
 
     @property
@@ -37,5 +35,3 @@ class UUID(MCType):
     @property
     def bytes(self) -> bytes:
         return bytes(self)
-
-

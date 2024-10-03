@@ -1,10 +1,7 @@
-from asyncio import StreamReader
-
-from mc_protocol.mc_types.base import AsyncBytesIO, MCType
+from mc_protocol.mc_types.base import MCType, SocketReader
 
 
 class Boolean(MCType):
-
     def __init__(self, value: bool | bytes):
         self.bool_value = None
         self.bytes_value = None
@@ -38,6 +35,5 @@ class Boolean(MCType):
         return bytes(self)
 
     @classmethod
-    async def from_stream(cls, reader: StreamReader | AsyncBytesIO) -> 'Boolean':
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'Boolean':
         return cls(bool(await reader.read(1)))
-

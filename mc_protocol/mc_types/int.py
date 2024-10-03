@@ -1,6 +1,4 @@
-from asyncio import StreamReader
-
-from mc_protocol.mc_types.base import AsyncBytesIO, MCType
+from mc_protocol.mc_types.base import MCType, SocketReader
 
 
 class Int(MCType):
@@ -20,7 +18,7 @@ class Int(MCType):
 
     def __int__(self):
         if self.int_value is None:
-            self.int_value = int.from_bytes(self.bytes_value[:self.size], 'big', signed=self.signed)
+            self.int_value = int.from_bytes(self.bytes_value[: self.size], 'big', signed=self.signed)
         return self.int_value
 
     def __bytes__(self):
@@ -32,7 +30,7 @@ class Int(MCType):
         return f'Int({int(self)})'
 
     @classmethod
-    async def from_stream(cls, reader: StreamReader | AsyncBytesIO, **kwargs) -> 'Int':
+    async def from_stream(cls, reader: SocketReader, **kwargs):
         return cls(await reader.read(cls.size))
 
     @property

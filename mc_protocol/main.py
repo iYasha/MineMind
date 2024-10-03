@@ -5,7 +5,6 @@ from mc_protocol.event_loop import EventLoop
 from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.protocols.v765.inbound.status import ServerInfoResponse
 from mc_protocol.protocols.v765.player import Player
-from mc_protocol.protocols.v765.server import Server
 
 
 @EventLoop.subscribe(ServerInfoResponse)
@@ -33,4 +32,3 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
-

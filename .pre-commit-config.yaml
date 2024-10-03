@@ -1,0 +1,62 @@
+default_language_version:
+  python: python3.12
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-merge-conflict
+
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v3.1.0
+    hooks:
+      - id: add-trailing-comma
+        exclude: '(venv|tests|__pycache__)/.*'
+
+  - repo: https://github.com/pycqa/autoflake
+    rev: v2.3.1
+    hooks:
+      - id: autoflake
+        types: [ python ]
+        exclude: '(venv|tests|__pycache__)/.*'
+        args: [ --remove-all-unused-imports, --recursive, --remove-unused-variables, --in-place ]
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        types: [ python ]
+        exclude: '(venv|tests|__pycache__)/.*'
+        args: [ --multi-line=3, --trailing-comma, --force-grid-wrap=0, --use-parentheses, --ensure-newline-before-comments, --line-length=120 ]
+
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+        types: [ python ]
+        exclude: '(venv|tests|__pycache__)/.*'
+        args: [ --line-length=120, --target-version=py312, --skip-string-normalization ]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+        types: [ python ]
+        exclude: '(venv|tests|__pycache__)/.*'
+        args: [
+          "--max-line-length=120",
+          "--ignore=D101,W503,C901,E501,E203,ANN002,ANN003,ANN101,ANN102",
+          "--max-complexity=10",
+          "--per-file-ignores=__init__.py:F401"
+        ]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        types: [ python ]
+        exclude: '(venv|tests|__pycache__)/.*'
+        args: [
+          "--disable-error-code=import",
+        ]
+

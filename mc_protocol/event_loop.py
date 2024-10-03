@@ -1,37 +1,35 @@
 import abc
 import asyncio
-from asyncio import StreamReader
 from collections import defaultdict
-from typing import Literal, Type, Tuple, NamedTuple
+from typing import Callable, Coroutine, Literal, NamedTuple, Type
 
 from mc_protocol.client import Client
 from mc_protocol.mc_types import VarInt
-from mc_protocol.mc_types.base import AsyncBytesIO
+from mc_protocol.mc_types.base import AsyncBytesIO, SocketReader
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import InboundEvent
-
-ALL_EVENTS = '*'
 
 
 class Observer(abc.ABC):
     pass
 
 
-Listener = NamedTuple('Listener', [('event', Type[InboundEvent] | None), ('callback', callable)])
+ListenerCallback = Callable[[SocketReader], Coroutine[None, None, None]]
+Listener = NamedTuple('Listener', [('event', Type[InboundEvent] | None), ('callback', ListenerCallback)])
 
 
 class EventLoop:
-    _listeners: dict[str, dict[int | Literal[ALL_EVENTS], list[Listener]]] = defaultdict(lambda: defaultdict(list))
+    _listeners: dict[str, dict[int | Literal['*'], list[Listener]]] = defaultdict(lambda: defaultdict(list))
 
     def __init__(self, client: Client):
         self.client = client
         self.bundle_packet = True
-        self.bundle = []
+        self.bundle: list[Coroutine[None, None, None]] = []
 
     @classmethod
     def subscribe_method(
         cls,
-        func: callable,
+        func: ListenerCallback,
         *events: Type[InboundEvent],
         state: ConnectionState | None = None,
         all_events: bool = False,
@@ -39,9 +37,9 @@ class EventLoop:
         for event in events:
             cls._listeners[event.state][event.packet_id].append(Listener(event, func))
         if all_events and state is None:
-            cls._listeners[ALL_EVENTS][ALL_EVENTS].append(Listener(None, func))
+            cls._listeners['*']['*'].append(Listener(None, func))
         elif all_events and state is not None:
-            cls._listeners[state][ALL_EVENTS].append(Listener(None, func))
+            cls._listeners[state]['*'].append(Listener(None, func))
 
     @classmethod
     def subscribe(
@@ -54,9 +52,9 @@ class EventLoop:
             for event in events:
                 cls._listeners[event.state][event.packet_id].append(Listener(event, func))
             if all_events and state is None:
-                cls._listeners[ALL_EVENTS][ALL_EVENTS].append(Listener(None, func))
+                cls._listeners['*']['*'].append(Listener(None, func))
             elif all_events and state is not None:
-                cls._listeners[state][ALL_EVENTS].append(Listener(None, func))
+                cls._listeners[state]['*'].append(Listener(None, func))
 
             return func
 
@@ -64,14 +62,14 @@ class EventLoop:
 
     async def submit_event(self, packet_id: VarInt, raw_data: AsyncBytesIO) -> None:
         listeners = (
-            self._listeners[self.client.state].get(packet_id.int, []) +
-            self._listeners[ALL_EVENTS].get(ALL_EVENTS, []) +
-            self._listeners[self.client.state].get(ALL_EVENTS, [])
+            self._listeners[self.client.state].get(packet_id.int, [])
+            + self._listeners['*'].get('*', [])
+            + self._listeners[self.client.state].get('*', [])
         )
         if not listeners:
             print(
                 f'[State={self.client.state}] Received packet {packet_id.hex} but no listeners are registered. '
-                f'Data: {len(await raw_data.read(-1))}'
+                f'Data: {len(await raw_data.read(-1))}',
             )
             return
 
@@ -114,4 +112,3 @@ class EventLoop:
             else:  # Bundle is off and we process packet in regular
                 # print('Regular')
                 await event
-

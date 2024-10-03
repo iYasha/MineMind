@@ -10,7 +10,7 @@ from mc_protocol.states.enums import HandshakingNextState
 
 
 class Server:
-    info: ServerInfoResponse = None
+    info: ServerInfoResponse | None = None
 
     def __init__(self, client: Client):
         self.client = client
@@ -29,5 +29,3 @@ class Server:
     async def server_status(data: SocketReader):
         instance = await ServerInfoResponse.from_stream(data)
         Server.info = instance
-
-

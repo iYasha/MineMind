@@ -1,12 +1,10 @@
 import struct
-from asyncio import StreamReader
 from decimal import Decimal
 
-from mc_protocol.mc_types.base import AsyncBytesIO, MCType
+from mc_protocol.mc_types.base import MCType, SocketReader
 
 
 class Float(MCType):
-
     def __init__(self, value: int | float | bytes):
         self.float_value = None
         self.bytes_value = None
@@ -34,7 +32,7 @@ class Float(MCType):
         return f'Float({float(self)})'
 
     @classmethod
-    async def from_stream(cls, reader: StreamReader | AsyncBytesIO) -> 'Float':
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'Float':
         return cls(await reader.read(4))
 
     @property
@@ -46,8 +44,7 @@ class Float(MCType):
         return bytes(self)
 
 
-class Double:
-
+class Double(MCType):
     def __init__(self, value: Decimal | float | bytes):
         self.float_value = None
         self.bytes_value = None
@@ -75,7 +72,7 @@ class Double:
         return f'Double({float(self)})'
 
     @classmethod
-    async def from_stream(cls, reader: StreamReader | AsyncBytesIO) -> 'Double':
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'Double':
         return cls(await reader.read(8))
 
     @property

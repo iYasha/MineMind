@@ -1,30 +1,48 @@
 import asyncio
 import uuid
-from contextlib import contextmanager, asynccontextmanager
+from contextlib import asynccontextmanager
 from datetime import datetime
-from decimal import Decimal
 
 import pytz
 
 from mc_protocol.client import Client
 from mc_protocol.event_loop import EventLoop
-from mc_protocol.mc_types import UUID, String, VarInt, Long, Boolean, UShort, UByte, Float, Short, Double
+from mc_protocol.mc_types import UUID, Boolean, Double, Long, Short, String, VarInt
 from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.protocols.v765.configuration import Configuration
-from mc_protocol.protocols.v765.inbound.login import LoginSuccessResponse, CompressResponse
+from mc_protocol.protocols.v765.inbound.login import CompressResponse, LoginSuccessResponse
 from mc_protocol.protocols.v765.inbound.play import (
-    PositionResponse, KeepAliveResponse, LoginResponse,
-    CombatDeathResponse, DamageEventResponse, RelEntityMoveResponse, UpdateHealthResponse, SpawnEntityResponse,
-    EntityTeleportResponse, EntityMoveLookResponse, EntityLookResponse, RemoveEntityResponse, UpdateTimeResponse,
-    SetDefaultSpawnPositionResponse, SetTickingStateResponse, StepTickResponse, ChunkDataAndLightResponse,
+    ChunkDataAndLightResponse,
+    CombatDeathResponse,
+    DamageEventResponse,
+    EntityLookResponse,
+    EntityMoveLookResponse,
+    EntityTeleportResponse,
+    KeepAliveResponse,
+    LoginResponse,
+    PositionResponse,
+    RelEntityMoveResponse,
+    RemoveEntityResponse,
+    SetDefaultSpawnPositionResponse,
+    SetTickingStateResponse,
+    SpawnEntityResponse,
+    StepTickResponse,
+    UpdateHealthResponse,
+    UpdateTimeResponse,
 )
-from mc_protocol.protocols.v765.outbound.login import LoginStartRequest, LoginAcknowledgedRequest
+from mc_protocol.protocols.v765.outbound.login import LoginAcknowledgedRequest, LoginStartRequest
 from mc_protocol.protocols.v765.outbound.play import (
-    TeleportConfirmRequest, KeepAliveRequest, ClientCommandRequest,
-    ChatMessageRequest, InteractRequest, ArmAnimationRequest, SteerVehicleRequest, HeldItemSlotRequest, PositionRequest,
+    ArmAnimationRequest,
+    ChatMessageRequest,
+    ClientCommandRequest,
+    HeldItemSlotRequest,
+    InteractRequest,
+    KeepAliveRequest,
+    PositionRequest,
+    TeleportConfirmRequest,
 )
 from mc_protocol.protocols.v765.utils import handshake
-from mc_protocol.states.enums import HandshakingNextState, ConnectionState
+from mc_protocol.states.enums import ConnectionState, HandshakingNextState
 
 
 class OfflinePlayerNamespace:
@@ -37,8 +55,8 @@ class Player:
     def __init__(self, client: Client):
         self.client = client
         self.configuration = None
-        self.player_uuid = None
-        self.player_entity_id = None
+        self.player_uuid: UUID | None = None
+        self.player_entity_id: int | None = None
 
         self.health: float = 20.0
         self.food: int = 20
@@ -73,7 +91,8 @@ class Player:
     async def login(self, username: str) -> None:
         # TODO: currently only supports offline mode
         await handshake(self.client, HandshakingNextState.LOGIN)
-        user_uuid = UUID(uuid.uuid3(OfflinePlayerNamespace, username))
+        # TODO: Argument 1 to "uuid3" has incompatible type "type[OfflinePlayerNamespace]"; expected "UUID"  [arg-type]
+        user_uuid = UUID(uuid.uuid3(OfflinePlayerNamespace, username))  # type: ignore[arg-type]
         self.player_uuid = user_uuid
 
         request = LoginStartRequest(String(username), user_uuid)
@@ -90,7 +109,7 @@ class Player:
         await self.login_acknowledged()
 
     async def _update_chunk_and_light_data(self, reader: SocketReader):
-        data = await ChunkDataAndLightResponse.from_stream(reader)
+        await ChunkDataAndLightResponse.from_stream(reader)
 
     async def _set_threshold(self, reader: SocketReader):
         response = await CompressResponse.from_stream(reader)
@@ -98,13 +117,12 @@ class Player:
         self.client.threshold = response.threshold.int
 
     async def _game_tick(self, reader: SocketReader):
-        response = await UpdateTimeResponse.from_stream(reader)
+        await UpdateTimeResponse.from_stream(reader)
         # print(response)
 
     async def _set_default_spawn_position(self, reader: SocketReader):
-        response = await SetDefaultSpawnPositionResponse.from_stream(reader)
+        await SetDefaultSpawnPositionResponse.from_stream(reader)
         # print(response)
-
 
     async def _set_ticking_state(self, reader: SocketReader):
         response = await SetTickingStateResponse.from_stream(reader)
@@ -120,16 +138,20 @@ class Player:
 
     async def _set_player_position(self, x: Double, y: Double, z: Double, on_ground: bool = True):
         print(f'Setting player position to {x=} {y=} {z=}')
-        await self.client.send_packet(PositionRequest(
-            x=x,
-            y=y,
-            z=z,
-            on_ground=Boolean(on_ground),
-        ))
+        await self.client.send_packet(
+            PositionRequest(
+                x=x,
+                y=y,
+                z=z,
+                on_ground=Boolean(on_ground),
+            ),
+        )
 
     async def _synchronize_player_position(self, reader: SocketReader):
         response = await PositionResponse.from_stream(reader)
-        print(f'Teleportation confirmed. Position: {response.x=} {response.y=} {response.z=} {response.yaw=} {response.pitch=} {response.flags=} {response.teleport_id=}')
+        print(
+            f'Teleportation confirmed. Position: {response.x=} {response.y=} {response.z=} {response.yaw=} {response.pitch=} {response.flags=} {response.teleport_id=}',
+        )
         await self.client.send_packet(TeleportConfirmRequest(response.teleport_id))
         await self.respawn()
         # await asyncio.sleep(1)
@@ -158,12 +180,12 @@ class Player:
 
         if response.entity_id.int == self.player_entity_id:
             print(
-                f'Player received damage from {response.source_type_id=} {response.source_cause_id=} {response.source_direct_id=}'
+                f'Player received damage from {response.source_type_id=} {response.source_cause_id=} {response.source_direct_id=}',
             )
             await self.attack(response.source_direct_id)
         else:
             print(
-                f'Entity {response.entity_id.int} received damage from {response.source_type_id=} {response.source_cause_id=} {response.source_direct_id=}'
+                f'Entity {response.entity_id.int} received damage from {response.source_type_id=} {response.source_cause_id=} {response.source_direct_id=}',
             )
 
     async def _update_health(self, reader: SocketReader):
@@ -181,7 +203,7 @@ class Player:
     async def _entities_removed(self, reader: SocketReader):
         response = await RemoveEntityResponse.from_stream(reader)
         for entity_id in response.entity_ids:
-            entity = self.entities.pop(entity_id.int, None)
+            self.entities.pop(entity_id.int, None)
             # print(f'[Remove] Entity {entity} removed')
 
     async def _entity_teleport(self, reader: SocketReader):
@@ -229,7 +251,6 @@ class Player:
         request = HeldItemSlotRequest(
             slot_id=Short(slot),
         )
-        print(f'Input', request)
         await self.client.send_packet(request)
 
     async def attack(self, entity_id: VarInt):
@@ -243,11 +264,13 @@ class Player:
 
     async def chat_message(self, message: str):
         print(f'Sending chat message: {message}')
-        await self.client.send_packet(ChatMessageRequest(
-            message=String(message),
-            timestamp=Long(round(datetime.now(tz=pytz.UTC).timestamp())),
-            message_count=VarInt(0),
-        ))
+        await self.client.send_packet(
+            ChatMessageRequest(
+                message=String(message),
+                timestamp=Long(round(datetime.now(tz=pytz.UTC).timestamp())),
+                message_count=VarInt(0),
+            ),
+        )
 
     @asynccontextmanager
     async def spawned(self):
