@@ -1,3 +1,4 @@
+from mc_protocol.mc_types import nbt
 from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.states.enums import ConnectionState
 from mc_protocol.states.events import InboundEvent
@@ -69,15 +70,14 @@ class RegistryDataResponse(InboundEvent):
 
     def __init__(
         self,
-        registry_codec: bytes,
-        # NBT (Compound) haven't been implemented yet, so we use bytes instead
+        registry_codec: nbt.Compound,
     ) -> None:
         self.registry_codec = registry_codec
 
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'RegistryDataResponse':
         return cls(
-            registry_codec=await reader.read(-1)
+            registry_codec=await nbt.NBT.from_stream(reader, is_anonymous=True)
         )
 
 

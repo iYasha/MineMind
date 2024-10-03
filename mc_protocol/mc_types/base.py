@@ -1,3 +1,4 @@
+import abc
 from asyncio import StreamReader
 
 import io
@@ -11,3 +12,10 @@ class AsyncBytesIO(io.BytesIO):
 
 SocketReader = StreamReader | AsyncBytesIO
 
+
+class MCType(abc.ABC):
+
+    @classmethod
+    @abc.abstractmethod
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'MCType':
+        raise NotImplementedError

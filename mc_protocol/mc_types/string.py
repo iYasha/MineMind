@@ -1,9 +1,11 @@
+from typing import Type
 
-from mc_protocol.mc_types import VarInt
-from mc_protocol.mc_types.base import SocketReader
+from mc_protocol.mc_types.varint import VarInt
+from mc_protocol.mc_types.int import Int
+from mc_protocol.mc_types.base import SocketReader, MCType
 
 
-class String:
+class String(MCType):
 
     def __init__(self, value: str | bytes):
         """
@@ -19,8 +21,8 @@ class String:
             raise TypeError('Value must be a str or bytes object')
 
     @classmethod
-    async def from_stream(cls, reader: SocketReader) -> 'String':
-        length = await VarInt.from_stream(reader)
+    async def from_stream(cls, reader: SocketReader, len_type: Type[VarInt] | Type[Int] = VarInt) -> 'String':
+        length = await len_type.from_stream(reader)
         return cls((await reader.read(length.int)).decode('utf-8'))
 
     def __str__(self):

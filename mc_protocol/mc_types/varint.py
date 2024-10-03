@@ -1,10 +1,10 @@
 from asyncio import StreamReader
 from typing import Tuple
 
-from mc_protocol.mc_types.base import AsyncBytesIO
+from mc_protocol.mc_types.base import AsyncBytesIO, MCType
 
 
-class VarInt:
+class VarInt(MCType):
 
     def __init__(self, value: int | bytes) -> None:
         self.int_value = None

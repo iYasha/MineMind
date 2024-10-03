@@ -2,10 +2,10 @@ import struct
 from asyncio import StreamReader
 from decimal import Decimal
 
-from mc_protocol.mc_types.base import AsyncBytesIO
+from mc_protocol.mc_types.base import AsyncBytesIO, MCType
 
 
-class Float:
+class Float(MCType):
 
     def __init__(self, value: int | float | bytes):
         self.float_value = None

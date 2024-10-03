@@ -29,6 +29,7 @@ class Configuration:
 
     async def _registry_data(self, reader: SocketReader):
         data = await RegistryDataResponse.from_stream(reader)
+        print(data)
         # print(f'Registry data {len(data.registry_codec)=} bytes')
 
     async def _update_tags(self, reader: SocketReader):

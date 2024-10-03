@@ -15,7 +15,8 @@ from mc_protocol.protocols.v765.inbound.login import LoginSuccessResponse, Compr
 from mc_protocol.protocols.v765.inbound.play import (
     PositionResponse, KeepAliveResponse, LoginResponse,
     CombatDeathResponse, DamageEventResponse, RelEntityMoveResponse, UpdateHealthResponse, SpawnEntityResponse,
-    EntityTeleportResponse, EntityMoveLookResponse, EntityLookResponse, RemoveEntityResponse,
+    EntityTeleportResponse, EntityMoveLookResponse, EntityLookResponse, RemoveEntityResponse, UpdateTimeResponse,
+    SetDefaultSpawnPositionResponse, SetTickingStateResponse, StepTickResponse, ChunkDataAndLightResponse,
 )
 from mc_protocol.protocols.v765.outbound.login import LoginStartRequest, LoginAcknowledgedRequest
 from mc_protocol.protocols.v765.outbound.play import (
@@ -60,6 +61,12 @@ class Player:
         EventLoop.subscribe_method(self._update_entity_position_and_rotation, EntityMoveLookResponse)
         EventLoop.subscribe_method(self._update_entity_rotation, EntityLookResponse)
         EventLoop.subscribe_method(self._entities_removed, RemoveEntityResponse)
+        EventLoop.subscribe_method(self._game_tick, UpdateTimeResponse)
+        EventLoop.subscribe_method(self._set_default_spawn_position, SetDefaultSpawnPositionResponse)
+        EventLoop.subscribe_method(self._set_ticking_state, SetTickingStateResponse)
+        EventLoop.subscribe_method(self._step_tick, StepTickResponse)
+        EventLoop.subscribe_method(self._update_chunk_and_light_data, ChunkDataAndLightResponse)
+        # TODO: 0x25 Work with (Chunk Data and Update Light) - Looks like it's return block entities
         # self.inventory = Inventory(self.player)
         # self.pvp = PVP(self.player)
 
@@ -82,10 +89,32 @@ class Player:
         print(f'[login_success] {data.username} {data.uuid}')
         await self.login_acknowledged()
 
+    async def _update_chunk_and_light_data(self, reader: SocketReader):
+        data = await ChunkDataAndLightResponse.from_stream(reader)
+        with open('chunk_data.bin', 'wb') as f:
+            f.write(data.heightmaps)
+
     async def _set_threshold(self, reader: SocketReader):
         response = await CompressResponse.from_stream(reader)
         print('set threshold', response.threshold)
         self.client.threshold = response.threshold.int
+
+    async def _game_tick(self, reader: SocketReader):
+        response = await UpdateTimeResponse.from_stream(reader)
+        # print(response)
+
+    async def _set_default_spawn_position(self, reader: SocketReader):
+        response = await SetDefaultSpawnPositionResponse.from_stream(reader)
+        # print(response)
+
+
+    async def _set_ticking_state(self, reader: SocketReader):
+        response = await SetTickingStateResponse.from_stream(reader)
+        print(response)
+
+    async def _step_tick(self, reader: SocketReader):
+        response = await StepTickResponse.from_stream(reader)
+        print(response)
 
     async def respawn(self):
         await self.client.send_packet(ClientCommandRequest(VarInt(0x00)))  # Perform respawn

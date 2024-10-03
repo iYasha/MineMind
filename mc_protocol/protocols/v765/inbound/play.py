@@ -343,20 +343,83 @@ class LoginResponse(InboundEvent):
         entity_id: Int,
         is_hardcore: Boolean,
         dimension_count: VarInt,
-        rest: bytes
-        # TODO: for the rest of the fields we haven't implemented Array type yet
+        dimension_names: Array[String],
+        max_players: VarInt,
+        view_distance: VarInt,
+        simulation_distance: VarInt,
+        reduced_debug_info: Boolean,
+        enable_respawn_screen: Boolean,
+        do_limited_crafting: Boolean,
+        dimension_type: String,
+        dimension_name: String,
+        hashed_seed: Long,
+        game_mode: UByte,
+        previous_game_mode: Byte,
+        is_debug: Boolean,
+        is_flat: Boolean,
+        has_death_location: Boolean,
+        portal_cooldown: VarInt,
+        death_dimension_name: String | None = None,
+        death_location: Position | None = None,
     ) -> None:
         self.entity_id = entity_id
         self.is_hardcore = is_hardcore
         self.dimension_count = dimension_count
+        self.dimension_names = dimension_names
+        self.max_players = max_players
+        self.view_distance = view_distance
+        self.simulation_distance = simulation_distance
+        self.reduced_debug_info = reduced_debug_info
+        self.enable_respawn_screen = enable_respawn_screen
+        self.do_limited_crafting = do_limited_crafting
+        self.dimension_type = dimension_type
+        self.dimension_name = dimension_name
+        self.hashed_seed = hashed_seed
+        self.game_mode = game_mode
+        self.previous_game_mode = previous_game_mode
+        self.is_debug = is_debug
+        self.is_flat = is_flat
+        self.has_death_location = has_death_location
+        self.portal_cooldown = portal_cooldown
+        self.death_dimension_name = death_dimension_name
+        self.death_location = death_location
 
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'LoginResponse':
+        entity_id = await Int.from_stream(reader)
+        is_hardcore = await Boolean.from_stream(reader)
+        dimension_count = await VarInt.from_stream(reader)
+        dimension_names = await Array.from_stream(reader, dimension_count.int, String)
+        max_players = await VarInt.from_stream(reader)
+        view_distance = await VarInt.from_stream(reader)
+        simulation_distance = await VarInt.from_stream(reader)
+        reduced_debug_info = await Boolean.from_stream(reader)
+        enable_respawn_screen = await Boolean.from_stream(reader)
+        do_limited_crafting = await Boolean.from_stream(reader)
+        dimension_type = await String.from_stream(reader)
+        dimension_name = await String.from_stream(reader)
+        hashed_seed = await Long.from_stream(reader)
+        game_mode = await UByte.from_stream(reader)
+        previous_game_mode = await Byte.from_stream(reader)
+        is_debug = await Boolean.from_stream(reader)
+        is_flat = await Boolean.from_stream(reader)
+        has_death_location = await Boolean.from_stream(reader)
+        if has_death_location:
+            death_dimension_name = await String.from_stream(reader)
+            death_location = await Position.from_stream(reader)
+        else:
+            death_dimension_name = None
+            death_location = None
+        portal_cooldown = await VarInt.from_stream(reader)
         return cls(
-            entity_id=await Int.from_stream(reader),
-            is_hardcore=await Boolean.from_stream(reader),
-            dimension_count=await VarInt.from_stream(reader),
-            rest=await reader.read(-1)
+            entity_id=entity_id, is_hardcore=is_hardcore, dimension_count=dimension_count,
+            dimension_names=dimension_names, max_players=max_players, view_distance=view_distance,
+            simulation_distance=simulation_distance, reduced_debug_info=reduced_debug_info,
+            enable_respawn_screen=enable_respawn_screen, do_limited_crafting=do_limited_crafting,
+            dimension_type=dimension_type, dimension_name=dimension_name, hashed_seed=hashed_seed,
+            game_mode=game_mode, previous_game_mode=previous_game_mode, is_debug=is_debug, is_flat=is_flat,
+            has_death_location=has_death_location, portal_cooldown=portal_cooldown,
+            death_dimension_name=death_dimension_name, death_location=death_location
         )
 
 
@@ -828,6 +891,25 @@ class UpdateTimeResponse(InboundEvent):
         )
 
 
+class SetDefaultSpawnPositionResponse(InboundEvent):
+    packet_id = 0x54
+    state = ConnectionState.PLAY
+
+    def __init__(
+        self,
+        location: Position,
+        angle: Float,
+    ) -> None:
+        self.location = location
+        self.angle = angle
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'SetDefaultSpawnPositionResponse':
+        return cls(
+            location=await Position.from_stream(reader), angle=await Float.from_stream(reader)
+        )
+
+
 class CollectResponse(InboundEvent):
     packet_id = 0x6c
     state = ConnectionState.PLAY
@@ -1188,4 +1270,43 @@ class StepTickResponse(InboundEvent):
     async def from_stream(cls, reader: SocketReader) -> 'StepTickResponse':
         return cls(
             tick_steps=await VarInt.from_stream(reader)
+        )
+
+
+class ChunkDataAndLightResponse(InboundEvent):
+    packet_id = 0x25
+    state = ConnectionState.PLAY
+
+    """
+    Chunk X	Int	Chunk coordinate (block coordinate divided by 16, rounded down)
+    Chunk Z	Int	Chunk coordinate (block coordinate divided by 16, rounded down)
+    Heightmaps	NBT	See Chunk Format#Heightmaps structure
+    Size	VarInt	Size of Data in bytes
+    Data	Byte Array	See Chunk Format#Data structure
+    Number of block entities	VarInt	Number of elements in the following array
+    Block Entity	Packed XZ	Array	Unsigned Byte	The packed section coordinates are relative to the chunk they are in. Values 0-15 are valid.
+    packed_xz = ((blockX & 15) << 4) | (blockZ & 15) // encode
+    x = packed_xz >> 4, z = packed_xz & 15 // decode
+    Y	Short	The height relative to the world
+    Type	VarInt	The type of block entity
+    Data	NBT	The block entity's data, without the X, Y, and Z values
+    """
+
+    def __init__(
+        self,
+        chunk_x: Int,
+        chunk_z: Int,
+        heightmaps: bytes,
+
+    ) -> None:
+        self.chunk_x = chunk_x
+        self.chunk_z = chunk_z
+        self.heightmaps = heightmaps
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'ChunkDataAndLightResponse':
+        return cls(
+            chunk_x=await Int.from_stream(reader),
+            chunk_z=await Int.from_stream(reader),
+            heightmaps=await reader.read(-1)
         )

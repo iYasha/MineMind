@@ -1,9 +1,9 @@
 from asyncio import StreamReader
 
-from mc_protocol.mc_types.base import AsyncBytesIO
+from mc_protocol.mc_types.base import AsyncBytesIO, MCType
 
 
-class Boolean:
+class Boolean(MCType):
 
     def __init__(self, value: bool | bytes):
         self.bool_value = None

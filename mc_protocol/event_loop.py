@@ -68,10 +68,10 @@ class EventLoop:
                 self._listeners[self.client.state].get(ALL_EVENTS, [])
             )
             if not listeners:
-                # print(
-                #     f'[State={self.client.state}] Received packet {packet_id.hex} but no listeners are registered. '
-                #     f'Data: {len(await data.read(-1))}'
-                # )
+                print(
+                    f'[State={self.client.state}] Received packet {packet_id.hex} but no listeners are registered. '
+                    f'Data: {len(await data.read(-1))}'
+                )
                 continue
 
             # TODO: Add event auto-parsing

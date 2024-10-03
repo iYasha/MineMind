@@ -1,10 +1,10 @@
 import uuid
 from asyncio import StreamReader
 
-from mc_protocol.mc_types.base import AsyncBytesIO
+from mc_protocol.mc_types.base import AsyncBytesIO, MCType
 
 
-class UUID:
+class UUID(MCType):
 
     def __init__(self, value: uuid.UUID | bytes) -> None:
         self.uuid_value = None

@@ -1,9 +1,9 @@
 from asyncio import StreamReader
 
-from mc_protocol.mc_types.base import AsyncBytesIO
+from mc_protocol.mc_types.base import AsyncBytesIO, MCType
 
 
-class Int:
+class Int(MCType):
     size = 4  # size of the number type in bytes
     signed = True
 
