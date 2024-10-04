@@ -1,6 +1,6 @@
 from mc_protocol.client import Client
-from mc_protocol.event_loop import EventDispatcher
-from mc_protocol.mc_types.base import SocketReader
+from mc_protocol.dispatcher import EventDispatcher
+from mc_protocol.protocols.base import InteractionModule
 from mc_protocol.protocols.enums import ConnectionState
 from mc_protocol.protocols.v765.inbound.configuration import (
     FeatureFlagResponse,
@@ -12,35 +12,35 @@ from mc_protocol.protocols.v765.inbound.configuration import (
 from mc_protocol.protocols.v765.outbound.configuration import FinishConfigurationRequest
 
 
-class Configuration:
+class Configuration(InteractionModule):
     def __init__(self, client: Client):
         self.client = client
-        EventDispatcher.subscribe_method(self._plugin_message, PluginMessageResponse)
-        EventDispatcher.subscribe_method(self._feature_flag, FeatureFlagResponse)
-        EventDispatcher.subscribe_method(self._registry_data, RegistryDataResponse)
-        EventDispatcher.subscribe_method(self._update_tags, UpdateTagsResponse)
-        EventDispatcher.subscribe_method(self._finish_configuration, FinishConfigurationResponse)
 
-    async def _plugin_message(self, reader: SocketReader):
-        await PluginMessageResponse.from_stream(reader)
+    @EventDispatcher.subscribe(PluginMessageResponse)
+    async def _plugin_message(self, data: PluginMessageResponse):
+        pass
         # print('plugin message', data.channel, len(data.data), 'bytes')
 
-    async def _feature_flag(self, reader: SocketReader):
-        await FeatureFlagResponse.from_stream(reader)
+    @EventDispatcher.subscribe(FeatureFlagResponse)
+    async def _feature_flag(self, data: FeatureFlagResponse):
+        pass
         # print(f'feature flag {data.total_features=}')
 
-    async def _registry_data(self, reader: SocketReader):
-        await RegistryDataResponse.from_stream(reader)
+    @EventDispatcher.subscribe(RegistryDataResponse)
+    async def _registry_data(self, data: RegistryDataResponse):
+        pass
         # TODO: Important to save this data for later use
         # dimension_name = data[minecraft:dimension_type][*][name]
         # min_y = data[minecraft:dimension_type][*][name][min_y]
         # height = data[minecraft:dimension_type][*][name][height]
         # print(f'Registry data {len(data.registry_codec)=} bytes')
 
-    async def _update_tags(self, reader: SocketReader):
-        await UpdateTagsResponse.from_stream(reader)
+    @EventDispatcher.subscribe(UpdateTagsResponse)
+    async def _update_tags(self, data: UpdateTagsResponse):
+        pass
         # print(f'Update tags {data.length}')
 
-    async def _finish_configuration(self, reader: SocketReader):
+    @EventDispatcher.subscribe(FinishConfigurationResponse)
+    async def _finish_configuration(self, data: FinishConfigurationResponse):
         await self.client.send_packet(FinishConfigurationRequest())
         self.client.state = ConnectionState.PLAY

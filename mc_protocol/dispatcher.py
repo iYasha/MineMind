@@ -1,6 +1,7 @@
 import asyncio
+import inspect
 from collections import defaultdict
-from typing import Callable, Coroutine, Literal, NamedTuple, Type
+from typing import TYPE_CHECKING, Callable, Coroutine, Literal, NamedTuple, Type, Union
 
 from mc_protocol.client import Client
 from mc_protocol.mc_types import VarInt
@@ -8,11 +9,25 @@ from mc_protocol.mc_types.base import AsyncBytesIO, SocketReader
 from mc_protocol.protocols.enums import ConnectionState
 from mc_protocol.protocols.protocol_events import InboundEvent
 
-ListenerCallback = Callable[[SocketReader], Coroutine[None, None, None]]
+if TYPE_CHECKING:
+    from mc_protocol.protocols.base import InteractionModule
+
+ListenerCallback = Union[
+    Callable[
+        [InboundEvent | SocketReader],
+        Coroutine[None, None, None],
+    ],
+    Callable[
+        ['InteractionModule', InboundEvent | SocketReader],
+        Coroutine[None, None, None],
+    ],
+]
+
 Listener = NamedTuple('Listener', [('event', Type[InboundEvent] | None), ('callback', ListenerCallback)])
 
 
 class EventDispatcher:
+    _callback_instances: dict[str, 'InteractionModule'] = {}
     _listeners: dict[str, dict[int | Literal['*'], list[Listener]]] = defaultdict(lambda: defaultdict(list))
 
     def __init__(self, client: Client):
@@ -21,19 +36,28 @@ class EventDispatcher:
         self.bundle: list[Coroutine[None, None, None]] = []
 
     @classmethod
-    def subscribe_method(
-        cls,
-        func: ListenerCallback,
-        *events: Type[InboundEvent],
-        state: ConnectionState | None = None,
-        all_events: bool = False,
-    ):
-        for event in events:
-            cls._listeners[event.state][event.packet_id].append(Listener(event, func))
-        if all_events and state is None:
-            cls._listeners['*']['*'].append(Listener(None, func))
-        elif all_events and state is not None:
-            cls._listeners[state]['*'].append(Listener(None, func))
+    def add_callback_instance(cls, instance: 'InteractionModule'):
+        """
+        We need this function to make it works:
+        >>> @EventDispatcher.subscribe(KeepAliveResponse)
+        >>> async def _keep_alive(self, reader: SocketReader):
+        >>>     ...
+
+        Because we need to pass `self` to the callback function.
+        """
+        cls._callback_instances[instance.__class__.__name__] = instance
+
+    @classmethod
+    def remove_callback_instance(cls, instance: 'InteractionModule'):
+        cls._callback_instances.pop(instance.__class__.__name__, None)
+
+    @classmethod
+    def get_method_instance(cls, func: ListenerCallback) -> 'InteractionModule':
+        class_name = func.__qualname__.split('.')[0]
+        instance = cls._callback_instances.get(class_name)
+        if instance is None:
+            raise ValueError(f'Trying to get instance of {class_name} but it is not registered')
+        return instance
 
     @classmethod
     def subscribe(
@@ -54,6 +78,16 @@ class EventDispatcher:
 
         return decorator
 
+    async def invoke_callback(self, callback: ListenerCallback, event: InboundEvent | SocketReader):
+        try:
+            if 'self' in inspect.signature(callback).parameters:
+                await callback(self.get_method_instance(callback), event)  # type: ignore[call-arg, arg-type]
+            else:
+                await callback(event)  # type: ignore[call-arg, arg-type]
+        except Exception as e:
+            packet_id = getattr(event, 'packet_id', None)
+            print(f'Error while invoking callback {callback} for event {packet_id}: {e}')
+
     async def submit_event(self, packet_id: VarInt, raw_data: AsyncBytesIO) -> None:
         listeners = (
             self._listeners[self.client.state].get(packet_id.int, [])
@@ -67,16 +101,30 @@ class EventDispatcher:
             )
             return
 
-        # TODO: Add event auto-parsing
         if len(listeners) == 1:  # Optimize for the common case
-            await listeners[0].callback(raw_data)
+            listener = listeners[0]
+            await self.invoke_callback(
+                listener.callback,
+                await listener.event.from_stream(raw_data) if listener.event else raw_data,
+            )
             return
 
         data_value = raw_data.getvalue()
-        try:
-            await asyncio.gather(*[listener.callback(AsyncBytesIO(data_value)) for listener in listeners])
-        except Exception as e:
-            print(f'Error while handling packet {packet_id}: {e}')
+        await asyncio.gather(
+            *[
+                self.invoke_callback(
+                    listener.callback,
+                    (
+                        await listener.event.from_stream(AsyncBytesIO(data_value))
+                        if listener.event
+                        else AsyncBytesIO(
+                            data_value,
+                        )
+                    ),
+                )
+                for listener in listeners
+            ],
+        )
 
     async def run_forever(self):
         while True:

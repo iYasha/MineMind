@@ -15,7 +15,7 @@ class Event(abc.ABC):
 class InboundEvent(Event, abc.ABC):
     @classmethod
     async def from_stream(cls, reader: SocketReader):
-        return
+        return cls()
 
 
 class OutboundEvent(Event, abc.ABC):

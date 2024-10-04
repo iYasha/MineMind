@@ -6,9 +6,9 @@ from datetime import datetime
 import pytz
 
 from mc_protocol.client import Client
-from mc_protocol.event_loop import EventDispatcher
+from mc_protocol.dispatcher import EventDispatcher
 from mc_protocol.mc_types import UUID, Boolean, Double, Long, Short, String, VarInt
-from mc_protocol.mc_types.base import SocketReader
+from mc_protocol.protocols.base import InteractionModule
 from mc_protocol.protocols.enums import ConnectionState, HandshakingNextState
 from mc_protocol.protocols.v765.configuration import Configuration
 from mc_protocol.protocols.v765.inbound.login import CompressResponse, LoginSuccessResponse
@@ -49,7 +49,7 @@ class OfflinePlayerNamespace:
     bytes = b'OfflinePlayer:'
 
 
-class Player:
+class Player(InteractionModule):
     # TODO: Add readable logs
 
     def __init__(self, client: Client):
@@ -65,25 +65,6 @@ class Player:
         # self.position =
         self.entities: dict[int, SpawnEntityResponse] = {}
 
-        EventDispatcher.subscribe_method(self._login_successful, LoginSuccessResponse)
-        EventDispatcher.subscribe_method(self._set_threshold, CompressResponse)
-        EventDispatcher.subscribe_method(self._synchronize_player_position, PositionResponse)
-        EventDispatcher.subscribe_method(self._keep_alive, KeepAliveResponse)
-        EventDispatcher.subscribe_method(self._start_playing, LoginResponse)
-        EventDispatcher.subscribe_method(self._death, CombatDeathResponse)
-        EventDispatcher.subscribe_method(self._on_damage, DamageEventResponse)
-        EventDispatcher.subscribe_method(self._update_entity_position, RelEntityMoveResponse)
-        EventDispatcher.subscribe_method(self._update_health, UpdateHealthResponse)
-        EventDispatcher.subscribe_method(self._entity_spawned, SpawnEntityResponse)
-        EventDispatcher.subscribe_method(self._entity_teleport, EntityTeleportResponse)
-        EventDispatcher.subscribe_method(self._update_entity_position_and_rotation, EntityMoveLookResponse)
-        EventDispatcher.subscribe_method(self._update_entity_rotation, EntityLookResponse)
-        EventDispatcher.subscribe_method(self._entities_removed, RemoveEntityResponse)
-        EventDispatcher.subscribe_method(self._game_tick, UpdateTimeResponse)
-        EventDispatcher.subscribe_method(self._set_default_spawn_position, SetDefaultSpawnPositionResponse)
-        EventDispatcher.subscribe_method(self._set_ticking_state, SetTickingStateResponse)
-        EventDispatcher.subscribe_method(self._step_tick, StepTickResponse)
-        EventDispatcher.subscribe_method(self._update_chunk_and_light_data, ChunkDataAndLightResponse)
         # TODO: 0x25 Work with (Chunk Data and Update Light) - Looks like it's return block entities
         # self.inventory = Inventory(self.player)
         # self.pvp = PVP(self.player)
@@ -103,34 +84,38 @@ class Player:
         await self.client.send_packet(LoginAcknowledgedRequest())
         self.client.state = ConnectionState.CONFIGURATION
 
-    async def _login_successful(self, reader: SocketReader):
-        data = await LoginSuccessResponse.from_stream(reader)
+    @EventDispatcher.subscribe(LoginSuccessResponse)
+    async def _login_successful(self, data: LoginSuccessResponse):
         print(f'[login_success] {data.username} {data.uuid}')
         await self.login_acknowledged()
 
-    async def _update_chunk_and_light_data(self, reader: SocketReader):
-        await ChunkDataAndLightResponse.from_stream(reader)
+    @EventDispatcher.subscribe(ChunkDataAndLightResponse)
+    async def _update_chunk_and_light_data(self, data: ChunkDataAndLightResponse):
+        pass
 
-    async def _set_threshold(self, reader: SocketReader):
-        response = await CompressResponse.from_stream(reader)
-        print('set threshold', response.threshold)
-        self.client.threshold = response.threshold.int
+    @EventDispatcher.subscribe(CompressResponse)
+    async def _set_threshold(self, data: CompressResponse):
+        print(hex(id(self)))
+        print('set threshold', data.threshold)
+        self.client.threshold = data.threshold.int
 
-    async def _game_tick(self, reader: SocketReader):
-        await UpdateTimeResponse.from_stream(reader)
+    @EventDispatcher.subscribe(UpdateTimeResponse)
+    async def _game_tick(self, data: UpdateTimeResponse):
+        pass
         # print(response)
 
-    async def _set_default_spawn_position(self, reader: SocketReader):
-        await SetDefaultSpawnPositionResponse.from_stream(reader)
+    @EventDispatcher.subscribe(SetDefaultSpawnPositionResponse)
+    async def _set_default_spawn_position(self, data: SetDefaultSpawnPositionResponse):
+        pass
         # print(response)
 
-    async def _set_ticking_state(self, reader: SocketReader):
-        response = await SetTickingStateResponse.from_stream(reader)
-        print(response)
+    @EventDispatcher.subscribe(SetTickingStateResponse)
+    async def _set_ticking_state(self, data: SetTickingStateResponse):
+        print(data)
 
-    async def _step_tick(self, reader: SocketReader):
-        response = await StepTickResponse.from_stream(reader)
-        print(response)
+    @EventDispatcher.subscribe(StepTickResponse)
+    async def _step_tick(self, data: StepTickResponse):
+        print(data)
 
     async def respawn(self):
         await self.client.send_packet(ClientCommandRequest(VarInt(0x00)))  # Perform respawn
@@ -147,105 +132,104 @@ class Player:
             ),
         )
 
-    async def _synchronize_player_position(self, reader: SocketReader):
-        response = await PositionResponse.from_stream(reader)
+    @EventDispatcher.subscribe(PositionResponse)
+    async def _synchronize_player_position(self, data: PositionResponse):
         print(
-            f'Teleportation confirmed. Position: {response.x=} {response.y=} {response.z=} {response.yaw=} {response.pitch=} {response.flags=} {response.teleport_id=}',
+            f'Teleportation confirmed. Position: {data.x=} {data.y=} {data.z=} {data.yaw=} {data.pitch=} {data.flags=} {data.teleport_id=}',
         )
-        await self.client.send_packet(TeleportConfirmRequest(response.teleport_id))
+        await self.client.send_packet(TeleportConfirmRequest(data.teleport_id))
         await self.respawn()
         # await asyncio.sleep(1)
         # await self._set_player_position(Double(response.x.decimal + 2), Double(response.y.decimal - Decimal(1.62) - Decimal(0.38)), response.z)
 
-    async def _keep_alive(self, reader: SocketReader):
-        response = await KeepAliveResponse.from_stream(reader)
+    @EventDispatcher.subscribe(KeepAliveResponse)
+    async def _keep_alive(self, data: KeepAliveResponse):
         # print(f'Keep alive {response.keep_alive_id=}')
-        await self.client.send_packet(KeepAliveRequest(response.keep_alive_id))
+        await self.client.send_packet(KeepAliveRequest(data.keep_alive_id))
 
-    async def _start_playing(self, reader: SocketReader):
-        response = await LoginResponse.from_stream(reader)
-        print(f'Login response {response.entity_id=}')
-        self.player_entity_id = response.entity_id.int
+    @EventDispatcher.subscribe(LoginResponse)
+    async def _start_playing(self, data: LoginResponse):
+        print(f'Login response {data.entity_id=}')
+        self.player_entity_id = data.entity_id.int
 
-    async def _death(self, reader: SocketReader):
-        response = await CombatDeathResponse.from_stream(reader)
-        print(f'Combat death {response.player_id=}')
-        if response.player_id.int == self.player_entity_id:
+    @EventDispatcher.subscribe(CombatDeathResponse)
+    async def _death(self, data: CombatDeathResponse):
+        print(f'Combat death {data.player_id=}')
+        if data.player_id.int == self.player_entity_id:
             await self.respawn()
         else:
-            print(response)
+            print(data)
 
-    async def _on_damage(self, reader: SocketReader):
-        response = await DamageEventResponse.from_stream(reader)
-
-        if response.entity_id.int == self.player_entity_id:
+    @EventDispatcher.subscribe(DamageEventResponse)
+    async def _on_damage(self, data: DamageEventResponse):
+        if data.entity_id.int == self.player_entity_id:
             print(
-                f'Player received damage from {response.source_type_id=} {response.source_cause_id=} {response.source_direct_id=}',
+                f'Player received damage from {data.source_type_id=} {data.source_cause_id=} {data.source_direct_id=}',
             )
-            await self.attack(response.source_direct_id)
+            await self.attack(data.source_direct_id)
         else:
             print(
-                f'Entity {response.entity_id.int} received damage from {response.source_type_id=} {response.source_cause_id=} {response.source_direct_id=}',
+                f'Entity {data.entity_id.int} received damage from {data.source_type_id=} {data.source_cause_id=} {data.source_direct_id=}',
             )
 
-    async def _update_health(self, reader: SocketReader):
-        response = await UpdateHealthResponse.from_stream(reader)
-        self.health = response.health.float
-        self.food = response.food.int
-        self.saturation = response.food_saturation.float
+    @EventDispatcher.subscribe(UpdateHealthResponse)
+    async def _update_health(self, data: UpdateHealthResponse):
+        self.health = data.health.float
+        self.food = data.food.int
+        self.saturation = data.food_saturation.float
         print(f'Health: {self.health}/20.0 Food: {self.food}/20 Saturation: {self.saturation}/5.0')
 
-    async def _entity_spawned(self, reader: SocketReader):
-        response = await SpawnEntityResponse.from_stream(reader)
-        self.entities[response.entity_id.int] = response
+    @EventDispatcher.subscribe(SpawnEntityResponse)
+    async def _entity_spawned(self, data: SpawnEntityResponse):
+        self.entities[data.entity_id.int] = data
         # print(response)
 
-    async def _entities_removed(self, reader: SocketReader):
-        response = await RemoveEntityResponse.from_stream(reader)
-        for entity_id in response.entity_ids:
+    @EventDispatcher.subscribe(RemoveEntityResponse)
+    async def _entities_removed(self, data: RemoveEntityResponse):
+        for entity_id in data.entity_ids:
             self.entities.pop(entity_id.int, None)
             # print(f'[Remove] Entity {entity} removed')
 
-    async def _entity_teleport(self, reader: SocketReader):
-        response = await EntityTeleportResponse.from_stream(reader)
-        entity = self.entities.get(response.entity_id.int)
+    @EventDispatcher.subscribe(EntityTeleportResponse)
+    async def _entity_teleport(self, data: EntityTeleportResponse):
+        entity = self.entities.get(data.entity_id.int)
         if not entity:
-            print(f'[Teleport] Entity {response.entity_id.int} not found')
+            print(f'[Teleport] Entity {data.entity_id.int} not found')
             return
-        entity.set_new_position(response.x, response.y, response.z, response.pitch, response.yaw)
+        entity.set_new_position(data.x, data.y, data.z, data.pitch, data.yaw)
         # if entity.type.int == 124:  # player code
         #     print(f'[Teleport] Entity {response.entity_id.int} moved to {round(entity.x.float,3)=} {round(entity.y.float, 3)=} {round(entity.z.float, 3)=}')
 
-    async def _update_entity_position(self, reader: SocketReader):
-        response = await RelEntityMoveResponse.from_stream(reader)
-        entity = self.entities.get(response.entity_id.int)
+    @EventDispatcher.subscribe(RelEntityMoveResponse)
+    async def _update_entity_position(self, data: RelEntityMoveResponse):
+        entity = self.entities.get(data.entity_id.int)
         if not entity:
-            print(f'[Movement] Entity {response.entity_id.int} not found')
+            print(f'[Movement] Entity {data.entity_id.int} not found')
             return
 
-        entity.new_position_from_delta(response.dx, response.dy, response.dz)
+        entity.new_position_from_delta(data.dx, data.dy, data.dz)
         # if entity.type.int == 124:  # player code
         #     print(f'[Movement] Entity {response.entity_id.int} moved to {round(entity.x.float,3)=} {round(entity.y.float, 3)=} {round(entity.z.float, 3)=}')
 
-    async def _update_entity_position_and_rotation(self, reader: SocketReader):
-        response = await EntityMoveLookResponse.from_stream(reader)
-        entity = self.entities.get(response.entity_id.int)
+    @EventDispatcher.subscribe(EntityMoveLookResponse)
+    async def _update_entity_position_and_rotation(self, data: EntityMoveLookResponse):
+        entity = self.entities.get(data.entity_id.int)
         if not entity:
-            print(f'[Movement] Entity {response.entity_id.int} not found')
+            print(f'[Movement] Entity {data.entity_id.int} not found')
             return
 
-        entity.new_position_from_delta(response.dx, response.dy, response.dz)
-        entity.set_new_position(yaw=response.yaw, pitch=response.pitch)
+        entity.new_position_from_delta(data.dx, data.dy, data.dz)
+        entity.set_new_position(yaw=data.yaw, pitch=data.pitch)
         # if entity.type.int == 124:  # player code
         #     print(f'[Movement] Entity {response.entity_id.int} moved to {round(entity.x.float,3)=} {round(entity.y.float, 3)=} {round(entity.z.float, 3)=}')
 
-    async def _update_entity_rotation(self, reader: SocketReader):
-        response = await EntityLookResponse.from_stream(reader)
-        entity = self.entities.get(response.entity_id.int)
+    @EventDispatcher.subscribe(EntityLookResponse)
+    async def _update_entity_rotation(self, data: EntityLookResponse):
+        entity = self.entities.get(data.entity_id.int)
         if not entity:
-            print(f'[Movement] Entity {response.entity_id.int} not found')
+            print(f'[Movement] Entity {data.entity_id.int} not found')
             return
-        entity.set_new_position(yaw=response.yaw, pitch=response.pitch)
+        entity.set_new_position(yaw=data.yaw, pitch=data.pitch)
 
     async def set_active_slot(self, slot: int):
         request = HeldItemSlotRequest(

@@ -1,16 +1,14 @@
 import asyncio
 
 from mc_protocol.client import Client
-from mc_protocol.event_loop import EventDispatcher
-from mc_protocol.mc_types.base import SocketReader
+from mc_protocol.dispatcher import EventDispatcher
 from mc_protocol.protocols.v765.inbound.status import ServerInfoResponse
 from mc_protocol.protocols.v765.player import Player
 
 
 @EventDispatcher.subscribe(ServerInfoResponse)
-async def server_status(data: SocketReader):
-    instance = await ServerInfoResponse.from_stream(data)
-    print(instance)
+async def server_status(data: ServerInfoResponse):
+    print(data)
 
 
 async def main():
