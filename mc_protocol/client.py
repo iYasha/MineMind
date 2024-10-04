@@ -2,13 +2,17 @@ import asyncio
 import zlib
 from asyncio import StreamReader, StreamWriter
 
+from mc_protocol import DEBUG_TRACE
 from mc_protocol.mc_types import VarInt
 from mc_protocol.mc_types.base import AsyncBytesIO
 from mc_protocol.protocols.enums import ConnectionState
 from mc_protocol.protocols.protocol_events import OutboundEvent
+from mc_protocol.protocols.utils import get_logger
 
 
 class Client:
+    logger = get_logger('Client')
+
     def __init__(self, host: str = '127.0.0.1', port: int = 25565, protocol_version: int = 767):
         self.host = host
         self.port = port
@@ -23,9 +27,11 @@ class Client:
 
     async def __aenter__(self):
         self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
+        self.logger.log(DEBUG_TRACE, f'Connected to {self.host}:{self.port}')
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        self.logger.log(DEBUG_TRACE, f'Disconnected from {self.host}:{self.port}')
         self.writer.close()
         await self.writer.wait_closed()
 
@@ -49,6 +55,7 @@ class Client:
 
         self.writer.write(packet)
         await self.writer.drain()
+        self.logger.log(DEBUG_TRACE, f'Sent packet {event.packet_id} with {buffer_len} bytes')
 
     async def unpack_packet(self, reader: StreamReader) -> tuple[VarInt, AsyncBytesIO]:
         total_packet_length = await VarInt.from_stream(reader)
@@ -62,13 +69,14 @@ class Client:
             packet_length = total_packet_length.int - len(data_length.bytes)
 
             compressed_data = await reader.read(packet_length)
-            # print(f'COMPRESSED DATA: {packet_length}')
+
+            self.logger.log(DEBUG_TRACE, f'Received compressed packet {len(compressed_data)} bytes')
             while len(compressed_data) < packet_length:  # sometimes the rest of the data hasn't been transmited yet
-                # print(f'READ ADDITIONAL PACKAGES: {packet_length - len(compressed_data)}')
+                self.logger.log(DEBUG_TRACE, f'Waiting for {packet_length - len(compressed_data)} more bytes')
                 compressed_data += await reader.read(
                     packet_length - len(compressed_data),
                 )  # so we try to read what is missing
-            decompressed_data = zlib.decompress(compressed_data)  # TODO: Possible issues with compressed response
+            decompressed_data = zlib.decompress(compressed_data)
             if data_length.int != len(decompressed_data):
                 raise zlib.error('Incorrect uncompressed data length')
             buffer = AsyncBytesIO(decompressed_data)

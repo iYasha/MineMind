@@ -3,11 +3,13 @@ import inspect
 from collections import defaultdict
 from typing import TYPE_CHECKING, Callable, Coroutine, Literal, NamedTuple, Type, Union
 
+from mc_protocol import DEBUG_TRACE
 from mc_protocol.client import Client
 from mc_protocol.mc_types import VarInt
 from mc_protocol.mc_types.base import AsyncBytesIO, SocketReader
 from mc_protocol.protocols.enums import ConnectionState
 from mc_protocol.protocols.protocol_events import InboundEvent
+from mc_protocol.protocols.utils import get_logger
 
 if TYPE_CHECKING:
     from mc_protocol.protocols.base import InteractionModule
@@ -27,6 +29,7 @@ Listener = NamedTuple('Listener', [('event', Type[InboundEvent] | None), ('callb
 
 
 class EventDispatcher:
+    logger = get_logger('EventDispatcher')
     _callback_instances: dict[str, 'InteractionModule'] = {}
     _listeners: dict[str, dict[int | Literal['*'], list[Listener]]] = defaultdict(lambda: defaultdict(list))
 
@@ -86,7 +89,7 @@ class EventDispatcher:
                 await callback(event)  # type: ignore[call-arg, arg-type]
         except Exception as e:
             packet_id = getattr(event, 'packet_id', None)
-            print(f'Error while invoking callback {callback} for event {packet_id}: {e}')
+            self.logger.error(f'Error while invoking callback {callback} for event {packet_id}: {e}')
 
     async def submit_event(self, packet_id: VarInt, raw_data: AsyncBytesIO) -> None:
         listeners = (
@@ -95,11 +98,17 @@ class EventDispatcher:
             + self._listeners[self.client.state].get('*', [])
         )
         if not listeners:
-            print(
+            self.logger.log(
+                DEBUG_TRACE,
                 f'[State={self.client.state}] Received packet {packet_id.hex} but no listeners are registered. '
-                f'Data: {len(await raw_data.read(-1))}',
+                f'Packet len: {len(await raw_data.read(-1))}',
             )
             return
+
+        self.logger.log(
+            DEBUG_TRACE,
+            f'[State={self.client.state}] Received packet {packet_id.hex} for {len(listeners)} listeners.',
+        )
 
         if len(listeners) == 1:  # Optimize for the common case
             listener = listeners[0]
@@ -135,22 +144,22 @@ class EventDispatcher:
 
             if self.bundle_packet and is_bundle_delimiter:
                 if self.bundle:  # End bundle
-                    # print('Free bundle', len(self.bundle))
+                    self.logger.log(DEBUG_TRACE, f'Free bundled package: {len(self.bundle)}')
                     [await bundled_event for bundled_event in self.bundle]
                     await event
                     self.bundle = []
                 else:  # Start bundle
-                    # print('Start bundle')
+                    self.logger.log(DEBUG_TRACE, 'Bundle delimiter received, start bundling')
                     self.bundle.append(event)  # append packet
             elif self.bundle:  # we're bundling right now
                 self.bundle.append(event)  # append packet
-                # print(f'Bundled')
-                if len(self.bundle) > 32:
-                    # print(f'Stop bundle {len(self.bundle)}')
+                bundle_length = len(self.bundle)
+                self.logger.log(DEBUG_TRACE, f'Bundle packet, total length: {bundle_length}')
+                if bundle_length > 32:
+                    self.logger.log(DEBUG_TRACE, f'Bundle is too big, dropping it. Length: {bundle_length}')
                     [await bundled_event for bundled_event in self.bundle]
                     await event
                     self.bundle = []
                     self.bundle_packet = False
             else:  # Bundle is off and we process packet in regular
-                # print('Regular')
                 await event

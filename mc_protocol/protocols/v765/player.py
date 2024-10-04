@@ -5,12 +5,15 @@ from datetime import datetime
 
 import pytz
 
+from mc_protocol import DEBUG_GAME_EVENTS, DEBUG_PROTOCOL
 from mc_protocol.client import Client
 from mc_protocol.dispatcher import EventDispatcher
 from mc_protocol.mc_types import UUID, Boolean, Double, Long, Short, String, VarInt
 from mc_protocol.protocols.base import InteractionModule
 from mc_protocol.protocols.enums import ConnectionState, HandshakingNextState
+from mc_protocol.protocols.utils import get_logger
 from mc_protocol.protocols.v765.configuration import Configuration
+from mc_protocol.protocols.v765.handshake import handshake
 from mc_protocol.protocols.v765.inbound.login import CompressResponse, LoginSuccessResponse
 from mc_protocol.protocols.v765.inbound.play import (
     ChunkDataAndLightResponse,
@@ -42,7 +45,6 @@ from mc_protocol.protocols.v765.outbound.play import (
     PositionRequest,
     TeleportConfirmRequest,
 )
-from mc_protocol.protocols.v765.utils import handshake
 
 
 class OfflinePlayerNamespace:
@@ -50,7 +52,7 @@ class OfflinePlayerNamespace:
 
 
 class Player(InteractionModule):
-    # TODO: Add readable logs
+    logger = get_logger('Player')
 
     def __init__(self, client: Client):
         self.client = client
@@ -86,7 +88,7 @@ class Player(InteractionModule):
 
     @EventDispatcher.subscribe(LoginSuccessResponse)
     async def _login_successful(self, data: LoginSuccessResponse):
-        print(f'[login_success] {data.username} {data.uuid}')
+        self.logger.log(DEBUG_GAME_EVENTS, f'User {data.username} logged in successfully!')
         await self.login_acknowledged()
 
     @EventDispatcher.subscribe(ChunkDataAndLightResponse)
@@ -95,34 +97,30 @@ class Player(InteractionModule):
 
     @EventDispatcher.subscribe(CompressResponse)
     async def _set_threshold(self, data: CompressResponse):
-        print(hex(id(self)))
-        print('set threshold', data.threshold)
+        self.logger.log(DEBUG_PROTOCOL, f'Compression activated. Threshold set to {data.threshold.int}')
         self.client.threshold = data.threshold.int
 
     @EventDispatcher.subscribe(UpdateTimeResponse)
     async def _game_tick(self, data: UpdateTimeResponse):
         pass
-        # print(response)
 
     @EventDispatcher.subscribe(SetDefaultSpawnPositionResponse)
     async def _set_default_spawn_position(self, data: SetDefaultSpawnPositionResponse):
         pass
-        # print(response)
 
     @EventDispatcher.subscribe(SetTickingStateResponse)
     async def _set_ticking_state(self, data: SetTickingStateResponse):
-        print(data)
+        pass
 
     @EventDispatcher.subscribe(StepTickResponse)
     async def _step_tick(self, data: StepTickResponse):
-        print(data)
+        pass
 
     async def respawn(self):
         await self.client.send_packet(ClientCommandRequest(VarInt(0x00)))  # Perform respawn
-        print('Respawned')
+        self.logger.log(DEBUG_GAME_EVENTS, 'Respawning...')
 
     async def _set_player_position(self, x: Double, y: Double, z: Double, on_ground: bool = True):
-        print(f'Setting player position to {x=} {y=} {z=}')
         await self.client.send_packet(
             PositionRequest(
                 x=x,
@@ -131,45 +129,47 @@ class Player(InteractionModule):
                 on_ground=Boolean(on_ground),
             ),
         )
+        self.logger.log(DEBUG_GAME_EVENTS, f'Moved to {x=} {y=} {z=}')
 
     @EventDispatcher.subscribe(PositionResponse)
     async def _synchronize_player_position(self, data: PositionResponse):
-        print(
+        self.logger.log(
+            DEBUG_PROTOCOL,
             f'Teleportation confirmed. Position: {data.x=} {data.y=} {data.z=} {data.yaw=} {data.pitch=} {data.flags=} {data.teleport_id=}',
         )
         await self.client.send_packet(TeleportConfirmRequest(data.teleport_id))
+        # Respawn happens twice, on_death and here
         await self.respawn()
         # await asyncio.sleep(1)
         # await self._set_player_position(Double(response.x.decimal + 2), Double(response.y.decimal - Decimal(1.62) - Decimal(0.38)), response.z)
 
     @EventDispatcher.subscribe(KeepAliveResponse)
     async def _keep_alive(self, data: KeepAliveResponse):
-        # print(f'Keep alive {response.keep_alive_id=}')
+        self.logger.log(DEBUG_PROTOCOL, f'Keep alive received: {data.keep_alive_id=}')
         await self.client.send_packet(KeepAliveRequest(data.keep_alive_id))
 
     @EventDispatcher.subscribe(LoginResponse)
     async def _start_playing(self, data: LoginResponse):
-        print(f'Login response {data.entity_id=}')
         self.player_entity_id = data.entity_id.int
+        self.logger.log(DEBUG_PROTOCOL, f'Player entity id: {self.player_entity_id=}')
 
     @EventDispatcher.subscribe(CombatDeathResponse)
     async def _death(self, data: CombatDeathResponse):
-        print(f'Combat death {data.player_id=}')
         if data.player_id.int == self.player_entity_id:
+            self.logger.log(DEBUG_GAME_EVENTS, f'Player died. Cause: {data.message}')
             await self.respawn()
         else:
-            print(data)
+            self.logger.log(DEBUG_GAME_EVENTS, f'Entity {data.player_id.int} died. Cause: {data.message}')
 
     @EventDispatcher.subscribe(DamageEventResponse)
     async def _on_damage(self, data: DamageEventResponse):
         if data.entity_id.int == self.player_entity_id:
-            print(
-                f'Player received damage from {data.source_type_id=} {data.source_cause_id=} {data.source_direct_id=}',
-            )
+            self.logger.log(DEBUG_GAME_EVENTS, f'Player received damage from {data.source_type_id}')
             await self.attack(data.source_direct_id)
         else:
-            print(
-                f'Entity {data.entity_id.int} received damage from {data.source_type_id=} {data.source_cause_id=} {data.source_direct_id=}',
+            self.logger.log(
+                DEBUG_GAME_EVENTS,
+                f'Entity {data.entity_id.int} received damage from {data.source_type_id}',
             )
 
     @EventDispatcher.subscribe(UpdateHealthResponse)
@@ -177,65 +177,70 @@ class Player(InteractionModule):
         self.health = data.health.float
         self.food = data.food.int
         self.saturation = data.food_saturation.float
-        print(f'Health: {self.health}/20.0 Food: {self.food}/20 Saturation: {self.saturation}/5.0')
+        self.logger.log(
+            DEBUG_GAME_EVENTS,
+            f'Health: {self.health}/20.0 Food: {self.food}/20 Saturation: {self.saturation}/5.0',
+        )
 
     @EventDispatcher.subscribe(SpawnEntityResponse)
     async def _entity_spawned(self, data: SpawnEntityResponse):
         self.entities[data.entity_id.int] = data
-        # print(response)
+        self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} spawned')
 
     @EventDispatcher.subscribe(RemoveEntityResponse)
     async def _entities_removed(self, data: RemoveEntityResponse):
         for entity_id in data.entity_ids:
             self.entities.pop(entity_id.int, None)
-            # print(f'[Remove] Entity {entity} removed')
+            self.logger.log(DEBUG_PROTOCOL, f'Entity {entity_id.int} removed')
 
     @EventDispatcher.subscribe(EntityTeleportResponse)
     async def _entity_teleport(self, data: EntityTeleportResponse):
         entity = self.entities.get(data.entity_id.int)
         if not entity:
-            print(f'[Teleport] Entity {data.entity_id.int} not found')
+            self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} teleported, but not found in the list')
             return
         entity.set_new_position(data.x, data.y, data.z, data.pitch, data.yaw)
-        # if entity.type.int == 124:  # player code
-        #     print(f'[Teleport] Entity {response.entity_id.int} moved to {round(entity.x.float,3)=} {round(entity.y.float, 3)=} {round(entity.z.float, 3)=}')
+        self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} teleported to {data.x=} {data.y=} {data.z=}')
 
     @EventDispatcher.subscribe(RelEntityMoveResponse)
     async def _update_entity_position(self, data: RelEntityMoveResponse):
         entity = self.entities.get(data.entity_id.int)
         if not entity:
-            print(f'[Movement] Entity {data.entity_id.int} not found')
+            self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} moved, but not found in the list')
             return
 
         entity.new_position_from_delta(data.dx, data.dy, data.dz)
-        # if entity.type.int == 124:  # player code
-        #     print(f'[Movement] Entity {response.entity_id.int} moved to {round(entity.x.float,3)=} {round(entity.y.float, 3)=} {round(entity.z.float, 3)=}')
+        self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} moved to {entity.x=} {entity.y=} {entity.z=}')
 
     @EventDispatcher.subscribe(EntityMoveLookResponse)
     async def _update_entity_position_and_rotation(self, data: EntityMoveLookResponse):
         entity = self.entities.get(data.entity_id.int)
         if not entity:
-            print(f'[Movement] Entity {data.entity_id.int} not found')
+            self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} moved and rotated, but not found in the list')
             return
 
         entity.new_position_from_delta(data.dx, data.dy, data.dz)
         entity.set_new_position(yaw=data.yaw, pitch=data.pitch)
-        # if entity.type.int == 124:  # player code
-        #     print(f'[Movement] Entity {response.entity_id.int} moved to {round(entity.x.float,3)=} {round(entity.y.float, 3)=} {round(entity.z.float, 3)=}')
+        self.logger.log(
+            DEBUG_PROTOCOL,
+            f'Entity {data.entity_id.int} moved to {entity.x=} {entity.y=} {entity.z=} and rotated to {data.yaw=} {data.pitch=}',
+        )
 
     @EventDispatcher.subscribe(EntityLookResponse)
     async def _update_entity_rotation(self, data: EntityLookResponse):
         entity = self.entities.get(data.entity_id.int)
         if not entity:
-            print(f'[Movement] Entity {data.entity_id.int} not found')
+            self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} rotated, but not found in the list')
             return
         entity.set_new_position(yaw=data.yaw, pitch=data.pitch)
+        self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} rotated to {data.yaw=} {data.pitch=}')
 
     async def set_active_slot(self, slot: int):
         request = HeldItemSlotRequest(
             slot_id=Short(slot),
         )
         await self.client.send_packet(request)
+        self.logger.log(DEBUG_GAME_EVENTS, f'Set active slot to {slot}')
 
     async def attack(self, entity_id: VarInt):
         request = InteractRequest(
@@ -245,9 +250,9 @@ class Player(InteractionModule):
         )
         await self.client.send_packet(request)
         await self.client.send_packet(ArmAnimationRequest(ArmAnimationRequest.Hand.MAIN_HAND))
+        self.logger.log(DEBUG_GAME_EVENTS, f'Attacking entity {entity_id.int}')
 
     async def chat_message(self, message: str):
-        print(f'Sending chat message: {message}')
         await self.client.send_packet(
             ChatMessageRequest(
                 message=String(message),
@@ -255,6 +260,7 @@ class Player(InteractionModule):
                 message_count=VarInt(0),
             ),
         )
+        self.logger.log(DEBUG_GAME_EVENTS, f'Sent chat message: {message}')
 
     @asynccontextmanager
     async def spawned(self):

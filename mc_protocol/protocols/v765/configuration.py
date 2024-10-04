@@ -1,7 +1,9 @@
+from mc_protocol import DEBUG_PROTOCOL
 from mc_protocol.client import Client
 from mc_protocol.dispatcher import EventDispatcher
 from mc_protocol.protocols.base import InteractionModule
 from mc_protocol.protocols.enums import ConnectionState
+from mc_protocol.protocols.utils import get_logger
 from mc_protocol.protocols.v765.inbound.configuration import (
     FeatureFlagResponse,
     FinishConfigurationResponse,
@@ -13,22 +15,22 @@ from mc_protocol.protocols.v765.outbound.configuration import FinishConfiguratio
 
 
 class Configuration(InteractionModule):
+    logger = get_logger('Configuration')
+
     def __init__(self, client: Client):
         self.client = client
 
     @EventDispatcher.subscribe(PluginMessageResponse)
     async def _plugin_message(self, data: PluginMessageResponse):
-        pass
-        # print('plugin message', data.channel, len(data.data), 'bytes')
+        self.logger.log(DEBUG_PROTOCOL, 'Received plugin message')
 
     @EventDispatcher.subscribe(FeatureFlagResponse)
     async def _feature_flag(self, data: FeatureFlagResponse):
-        pass
-        # print(f'feature flag {data.total_features=}')
+        self.logger.log(DEBUG_PROTOCOL, 'Received feature flag')
 
     @EventDispatcher.subscribe(RegistryDataResponse)
     async def _registry_data(self, data: RegistryDataResponse):
-        pass
+        self.logger.log(DEBUG_PROTOCOL, 'Received registry data')
         # TODO: Important to save this data for later use
         # dimension_name = data[minecraft:dimension_type][*][name]
         # min_y = data[minecraft:dimension_type][*][name][min_y]
@@ -37,10 +39,10 @@ class Configuration(InteractionModule):
 
     @EventDispatcher.subscribe(UpdateTagsResponse)
     async def _update_tags(self, data: UpdateTagsResponse):
-        pass
-        # print(f'Update tags {data.length}')
+        self.logger.log(DEBUG_PROTOCOL, 'Received tags update')
 
     @EventDispatcher.subscribe(FinishConfigurationResponse)
     async def _finish_configuration(self, data: FinishConfigurationResponse):
         await self.client.send_packet(FinishConfigurationRequest())
         self.client.state = ConnectionState.PLAY
+        self.logger.log(DEBUG_PROTOCOL, 'Configuration finished. Switching to PLAY state')
