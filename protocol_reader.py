@@ -11,6 +11,8 @@ base_url = (
 version_url = f'{base_url}/version.json'
 protocol_url = f'{base_url}/protocol.json'
 
+# get also entities to constants:
+
 
 def get_version():
     return requests.get(version_url).json()

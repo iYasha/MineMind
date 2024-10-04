@@ -17,7 +17,6 @@ DEFAULT_LEVEL = logging.INFO if DEBUG_LEVEL == -1 else logging.DEBUG + DEBUG_LEV
 
 logging.basicConfig(
     level=DEFAULT_LEVEL,
-    #   format='%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
     format='%(asctime)s | %(levelname)-17s | [%(name)s] | %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
 )

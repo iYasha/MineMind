@@ -107,7 +107,8 @@ class EventDispatcher:
 
         self.logger.log(
             DEBUG_TRACE,
-            f'[State={self.client.state}] Received packet {packet_id.hex} for {len(listeners)} listeners.',
+            f'[State={self.client.state}] Received packet {packet_id.hex} for {len(listeners)} listeners. '
+            f'Length: {len(raw_data.getvalue())} bytes',
         )
 
         if len(listeners) == 1:  # Optimize for the common case

@@ -19,17 +19,11 @@ from mc_protocol.protocols.v765.inbound.play import (
     ChunkDataAndLightResponse,
     CombatDeathResponse,
     DamageEventResponse,
-    EntityLookResponse,
-    EntityMoveLookResponse,
-    EntityTeleportResponse,
     KeepAliveResponse,
     LoginResponse,
     PositionResponse,
-    RelEntityMoveResponse,
-    RemoveEntityResponse,
     SetDefaultSpawnPositionResponse,
     SetTickingStateResponse,
-    SpawnEntityResponse,
     StepTickResponse,
     UpdateHealthResponse,
     UpdateTimeResponse,
@@ -65,7 +59,6 @@ class Player(InteractionModule):
         self.saturation: float = 5.0
 
         # self.position =
-        self.entities: dict[int, SpawnEntityResponse] = {}
 
         # TODO: 0x25 Work with (Chunk Data and Update Light) - Looks like it's return block entities
         # self.inventory = Inventory(self.player)
@@ -181,59 +174,6 @@ class Player(InteractionModule):
             DEBUG_GAME_EVENTS,
             f'Health: {self.health}/20.0 Food: {self.food}/20 Saturation: {self.saturation}/5.0',
         )
-
-    @EventDispatcher.subscribe(SpawnEntityResponse)
-    async def _entity_spawned(self, data: SpawnEntityResponse):
-        self.entities[data.entity_id.int] = data
-        self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} spawned')
-
-    @EventDispatcher.subscribe(RemoveEntityResponse)
-    async def _entities_removed(self, data: RemoveEntityResponse):
-        for entity_id in data.entity_ids:
-            self.entities.pop(entity_id.int, None)
-            self.logger.log(DEBUG_PROTOCOL, f'Entity {entity_id.int} removed')
-
-    @EventDispatcher.subscribe(EntityTeleportResponse)
-    async def _entity_teleport(self, data: EntityTeleportResponse):
-        entity = self.entities.get(data.entity_id.int)
-        if not entity:
-            self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} teleported, but not found in the list')
-            return
-        entity.set_new_position(data.x, data.y, data.z, data.pitch, data.yaw)
-        self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} teleported to {data.x=} {data.y=} {data.z=}')
-
-    @EventDispatcher.subscribe(RelEntityMoveResponse)
-    async def _update_entity_position(self, data: RelEntityMoveResponse):
-        entity = self.entities.get(data.entity_id.int)
-        if not entity:
-            self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} moved, but not found in the list')
-            return
-
-        entity.new_position_from_delta(data.dx, data.dy, data.dz)
-        self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} moved to {entity.x=} {entity.y=} {entity.z=}')
-
-    @EventDispatcher.subscribe(EntityMoveLookResponse)
-    async def _update_entity_position_and_rotation(self, data: EntityMoveLookResponse):
-        entity = self.entities.get(data.entity_id.int)
-        if not entity:
-            self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} moved and rotated, but not found in the list')
-            return
-
-        entity.new_position_from_delta(data.dx, data.dy, data.dz)
-        entity.set_new_position(yaw=data.yaw, pitch=data.pitch)
-        self.logger.log(
-            DEBUG_PROTOCOL,
-            f'Entity {data.entity_id.int} moved to {entity.x=} {entity.y=} {entity.z=} and rotated to {data.yaw=} {data.pitch=}',
-        )
-
-    @EventDispatcher.subscribe(EntityLookResponse)
-    async def _update_entity_rotation(self, data: EntityLookResponse):
-        entity = self.entities.get(data.entity_id.int)
-        if not entity:
-            self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} rotated, but not found in the list')
-            return
-        entity.set_new_position(yaw=data.yaw, pitch=data.pitch)
-        self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} rotated to {data.yaw=} {data.pitch=}')
 
     async def set_active_slot(self, slot: int):
         request = HeldItemSlotRequest(

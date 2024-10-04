@@ -36,4 +36,8 @@ class Boolean(MCType):
 
     @classmethod
     async def from_stream(cls, reader: SocketReader, **kwargs) -> 'Boolean':
-        return cls(bool(await reader.read(1)))
+        return cls(
+            bool(
+                (await reader.read(1))[0],
+            ),
+        )

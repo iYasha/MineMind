@@ -1,3 +1,4 @@
+# TODO: Made these classes immutable to improve performance and not to parse the same data in dispatcher multiple times
 import abc
 
 from mc_protocol.mc_types.base import SocketReader

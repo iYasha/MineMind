@@ -1,4 +1,5 @@
 from decimal import Decimal
+from enum import Enum
 from typing import Optional
 
 from mc_protocol.mc_types import (
@@ -15,8 +16,9 @@ from mc_protocol.mc_types import (
     String,
     UByte,
     VarInt,
+    nbt,
 )
-from mc_protocol.mc_types.base import SocketReader
+from mc_protocol.mc_types.base import MCType, SocketReader
 from mc_protocol.protocols.enums import ConnectionState
 from mc_protocol.protocols.protocol_events import InboundEvent
 
@@ -1487,4 +1489,323 @@ class ChunkDataAndLightResponse(InboundEvent):
             chunk_x=await Int.from_stream(reader),
             chunk_z=await Int.from_stream(reader),
             heightmaps=await reader.read(-1),
+        )
+
+
+class PlayerAction(MCType):
+    class AddPlayer(MCType):
+
+        class Property(MCType):
+            def __init__(
+                self,
+                name: String,
+                value: String,
+                is_signed: Boolean,
+                signature: String | None = None,
+            ):
+                self.name = name
+                self.value = value
+                self.is_signed = is_signed
+                self.signature = signature
+
+            @classmethod
+            async def from_stream(cls, reader: SocketReader, **kwargs) -> 'PlayerAction.AddPlayer.Property':
+                name = await String.from_stream(reader)
+                value = await String.from_stream(reader)
+                is_signed = await Boolean.from_stream(reader)
+                signature = await String.from_stream(reader) if is_signed else None
+                return cls(
+                    name=name,
+                    value=value,
+                    is_signed=is_signed,
+                    signature=signature,
+                )
+
+        def __init__(
+            self,
+            name: String,
+            number_of_properties: VarInt,
+            properties: Array[Property],
+        ):
+            self.name = name
+            self.number_of_properties = number_of_properties
+            self.properties = properties
+
+        @classmethod
+        async def from_stream(cls, reader: SocketReader, **kwargs) -> 'PlayerAction.AddPlayer':
+            name = await String.from_stream(reader)
+            number_of_properties = await VarInt.from_stream(reader)
+            properties = await Array[PlayerAction.AddPlayer.Property].from_stream(
+                reader,
+                number_of_properties.int,
+                PlayerAction.AddPlayer.Property,
+            )
+            return cls(
+                name=name,
+                number_of_properties=number_of_properties,
+                properties=properties,
+            )
+
+    class InitializeChat(MCType):
+
+        def __init__(
+            self,
+            has_signature_data: Boolean,
+            chat_session_id: UUID | None = None,
+            public_key_expiry_time: Long | None = None,
+            encoded_public_key_size: VarInt | None = None,
+            encoded_public_key: bytes | None = None,
+            public_key_signature_size: VarInt | None = None,
+            public_key_signature: bytes | None = None,
+        ):
+            self.has_signature_data = has_signature_data
+            self.chat_session_id = chat_session_id
+            self.public_key_expiry_time = public_key_expiry_time
+            self.encoded_public_key_size = encoded_public_key_size
+            self.encoded_public_key = encoded_public_key
+            self.public_key_signature_size = public_key_signature_size
+            self.public_key_signature = public_key_signature
+
+        @classmethod
+        async def from_stream(cls, reader: SocketReader, **kwargs) -> 'PlayerAction.InitializeChat':
+            has_signature_data = await Boolean.from_stream(reader)
+            if has_signature_data.bool:
+                chat_session_id = await UUID.from_stream(reader)
+                public_key_expiry_time = await Long.from_stream(reader)
+                encoded_public_key_size = await VarInt.from_stream(reader)
+                encoded_public_key = await reader.read(encoded_public_key_size.int)
+                public_key_signature_size = await VarInt.from_stream(reader)
+                public_key_signature = await reader.read(public_key_signature_size.int)
+            else:
+                chat_session_id = None
+                public_key_expiry_time = None
+                encoded_public_key_size = None
+                encoded_public_key = None
+                public_key_signature_size = None
+                public_key_signature = None
+            return cls(
+                has_signature_data=has_signature_data,
+                chat_session_id=chat_session_id,
+                public_key_expiry_time=public_key_expiry_time,
+                encoded_public_key_size=encoded_public_key_size,
+                encoded_public_key=encoded_public_key,
+                public_key_signature_size=public_key_signature_size,
+                public_key_signature=public_key_signature,
+            )
+
+    class UpdateGameMode(MCType):
+
+        def __init__(
+            self,
+            game_mode: VarInt,
+        ):
+            self.game_mode = game_mode
+
+        @classmethod
+        async def from_stream(cls, reader: SocketReader, **kwargs) -> 'PlayerAction.UpdateGameMode':
+            game_mode = await VarInt.from_stream(reader)
+            return cls(
+                game_mode=game_mode,
+            )
+
+    class UpdateListed(MCType):
+
+        def __init__(
+            self,
+            listed: Boolean,
+        ):
+            self.listed = listed
+
+        @classmethod
+        async def from_stream(cls, reader: SocketReader, **kwargs) -> 'PlayerAction.UpdateListed':
+            listed = await Boolean.from_stream(reader)
+            return cls(
+                listed=listed,
+            )
+
+    class UpdateLatency(MCType):
+
+        def __init__(
+            self,
+            latency: VarInt,
+        ):
+            self.latency = latency
+
+        @classmethod
+        async def from_stream(cls, reader: SocketReader, **kwargs) -> 'PlayerAction.UpdateLatency':
+            latency = await VarInt.from_stream(reader)
+            return cls(
+                latency=latency,
+            )
+
+    class UpdateDisplayName(MCType):
+
+        def __init__(
+            self,
+            has_display_name: Boolean,
+            display_name: nbt.String | None = None,
+        ):
+            self.has_display_name = has_display_name
+            self.display_name = display_name
+
+        @classmethod
+        async def from_stream(cls, reader: SocketReader, **kwargs) -> 'PlayerAction.UpdateDisplayName':
+            has_display_name = await Boolean.from_stream(reader)
+            display_name = (
+                await nbt.NBT.from_stream(
+                    reader,
+                    is_anonymous=True,
+                )  # type: ignore[func-returns-value]
+                if has_display_name
+                else None
+            )
+            return cls(
+                has_display_name=has_display_name,
+                display_name=display_name,
+            )
+
+    class Action(int, Enum):
+        ADD_PLAYER = 0x01
+        INITIALIZE_CHAT = 0x02
+        UPDATE_GAME_MODE = 0x04
+        UPDATE_LISTED = 0x08
+        UPDATE_LATENCY = 0x10
+        UPDATE_DISPLAY_NAME = 0x20
+
+    AVAILABLE_DATA_TYPE = AddPlayer | InitializeChat | UpdateGameMode | UpdateListed | UpdateLatency | UpdateDisplayName
+
+    def __init__(
+        self,
+        action: Action,
+        data: AVAILABLE_DATA_TYPE,
+    ):
+        self.action = action
+        self.data = data
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'PlayerAction':
+        actions: Byte = kwargs['actions']
+        exclude: list[PlayerAction.Action] = kwargs['exclude']
+        if actions.int & PlayerAction.Action.ADD_PLAYER.value and PlayerAction.Action.ADD_PLAYER not in exclude:
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.AddPlayer.from_stream(reader)
+            action = PlayerAction.Action.ADD_PLAYER
+        elif (
+            actions.int & PlayerAction.Action.INITIALIZE_CHAT.value
+            and PlayerAction.Action.INITIALIZE_CHAT not in exclude
+        ):
+            action = PlayerAction.Action.INITIALIZE_CHAT
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.InitializeChat.from_stream(reader)  # type: ignore[no-redef]
+        elif (
+            actions.int & PlayerAction.Action.UPDATE_GAME_MODE.value
+            and PlayerAction.Action.UPDATE_GAME_MODE not in exclude
+        ):
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateGameMode.from_stream(reader)  # type: ignore[no-redef]
+            action = PlayerAction.Action.UPDATE_GAME_MODE
+        elif actions.int & PlayerAction.Action.UPDATE_LISTED.value and PlayerAction.Action.UPDATE_LISTED not in exclude:
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateListed.from_stream(reader)  # type: ignore[no-redef]
+            action = PlayerAction.Action.UPDATE_LISTED
+        elif (
+            actions.int & PlayerAction.Action.UPDATE_LATENCY.value and PlayerAction.Action.UPDATE_LATENCY not in exclude
+        ):
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateLatency.from_stream(reader)  # type: ignore[no-redef]
+            action = PlayerAction.Action.UPDATE_LATENCY
+        elif (
+            actions.int & PlayerAction.Action.UPDATE_DISPLAY_NAME.value
+            and PlayerAction.Action.UPDATE_DISPLAY_NAME not in exclude
+        ):
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateDisplayName.from_stream(reader)  # type: ignore[no-redef]
+            action = PlayerAction.Action.UPDATE_DISPLAY_NAME
+        else:
+            raise ValueError("Unknown PlayerAction action")
+        return cls(
+            action=action,
+            data=data,
+        )
+
+    @classmethod
+    def get_actions_count_from_byte(cls, action_byte: Byte) -> int:
+        count = 0
+        for action in cls.Action:
+            if action_byte.int & action.value:
+                count += 1
+        return count
+
+
+class PlayerInArray(MCType):
+
+    def __init__(
+        self,
+        uuid: UUID,
+        player_actions: Array[PlayerAction],
+    ):
+        self.uuid = uuid
+        self.player_actions = player_actions
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'PlayerInArray':
+        actions: Byte = kwargs['actions']
+        uuid = await UUID.from_stream(reader)
+        length = PlayerAction.get_actions_count_from_byte(actions)
+        player_actions = Array[PlayerAction]()
+        exclude_action: list[PlayerAction.Action] = []
+        for _ in range(length):
+            player_action = await PlayerAction.from_stream(reader, actions=actions, exclude=exclude_action)
+            exclude_action.append(player_action.action)
+            player_actions.append(player_action)
+        return cls(
+            uuid=uuid,
+            player_actions=player_actions,
+        )
+
+
+class PlayerInfoUpdateResponse(InboundEvent):
+    packet_id = 0x3C
+    state = ConnectionState.PLAY
+
+    def __init__(
+        self,
+        actions: Byte,
+        number_of_players: VarInt,
+        players: Array[PlayerInArray],
+    ) -> None:
+        self.actions = actions
+        self.number_of_players = number_of_players
+        self.players = players
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'PlayerInfoUpdateResponse':
+        actions = await Byte.from_stream(reader)
+        number_of_players = await VarInt.from_stream(reader)
+        players = await Array[PlayerInArray].from_stream(
+            reader,
+            number_of_players.int,
+            PlayerInArray,
+            type_params={'actions': actions},
+        )
+        return cls(
+            actions=actions,
+            number_of_players=number_of_players,
+            players=players,
+        )
+
+
+class PlayerInfoRemoveResponse(InboundEvent):
+    packet_id = 0x3B
+    state = ConnectionState.PLAY
+
+    def __init__(
+        self,
+        number_of_players: VarInt,
+        players: Array[UUID],
+    ) -> None:
+        self.number_of_players = number_of_players
+        self.players = players
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'PlayerInfoRemoveResponse':
+        number_of_players = await VarInt.from_stream(reader)
+        players = await Array[UUID].from_stream(reader, number_of_players.int, UUID)
+        return cls(
+            number_of_players=number_of_players,
+            players=players,
         )
