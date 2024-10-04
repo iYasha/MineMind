@@ -1,7 +1,7 @@
 from mc_protocol.client import Client
 from mc_protocol.mc_types import String, UShort, VarInt
+from mc_protocol.protocols.enums import ConnectionState, HandshakingNextState
 from mc_protocol.protocols.v765.outbound.handshaking import SetProtocolRequest
-from mc_protocol.states.enums import ConnectionState, HandshakingNextState
 
 
 async def handshake(client: Client, next_state: HandshakingNextState):

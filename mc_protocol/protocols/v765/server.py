@@ -1,12 +1,12 @@
 import asyncio
 
 from mc_protocol.client import Client
-from mc_protocol.event_loop import EventLoop
+from mc_protocol.event_loop import EventDispatcher
 from mc_protocol.mc_types.base import SocketReader
+from mc_protocol.protocols.enums import HandshakingNextState
 from mc_protocol.protocols.v765.inbound.status import ServerInfoResponse
 from mc_protocol.protocols.v765.outbound.status import PingStartRequest
 from mc_protocol.protocols.v765.utils import handshake
-from mc_protocol.states.enums import HandshakingNextState
 
 
 class Server:
@@ -25,7 +25,7 @@ class Server:
         return self.info
 
     @staticmethod
-    @EventLoop.subscribe(ServerInfoResponse)
+    @EventDispatcher.subscribe(ServerInfoResponse)
     async def server_status(data: SocketReader):
         instance = await ServerInfoResponse.from_stream(data)
         Server.info = instance

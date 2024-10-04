@@ -1,13 +1,13 @@
 import asyncio
 
 from mc_protocol.client import Client
-from mc_protocol.event_loop import EventLoop
+from mc_protocol.event_loop import EventDispatcher
 from mc_protocol.mc_types.base import SocketReader
 from mc_protocol.protocols.v765.inbound.status import ServerInfoResponse
 from mc_protocol.protocols.v765.player import Player
 
 
-@EventLoop.subscribe(ServerInfoResponse)
+@EventDispatcher.subscribe(ServerInfoResponse)
 async def server_status(data: SocketReader):
     instance = await ServerInfoResponse.from_stream(data)
     print(instance)
@@ -15,8 +15,8 @@ async def server_status(data: SocketReader):
 
 async def main():
     async with Client('localhost', protocol_version=765) as client:
-        event_loop = EventLoop(client)
-        loop = asyncio.create_task(event_loop.run_forever())
+        dispatcher = EventDispatcher(client)
+        dispatcher_task = asyncio.create_task(dispatcher.run_forever())
 
         # server = Server(client)
         # print(await server.get_info())
@@ -27,7 +27,7 @@ async def main():
         async with player.spawned():
             await player.chat_message('Hello, world!')
 
-        await loop
+        await dispatcher_task
 
 
 if __name__ == '__main__':

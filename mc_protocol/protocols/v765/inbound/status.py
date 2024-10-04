@@ -1,7 +1,7 @@
 from mc_protocol.mc_types import Long, String
 from mc_protocol.mc_types.base import SocketReader
-from mc_protocol.states.enums import ConnectionState
-from mc_protocol.states.events import InboundEvent
+from mc_protocol.protocols.enums import ConnectionState
+from mc_protocol.protocols.protocol_events import InboundEvent
 
 
 class ServerInfoResponse(InboundEvent):

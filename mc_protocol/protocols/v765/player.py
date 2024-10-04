@@ -6,9 +6,10 @@ from datetime import datetime
 import pytz
 
 from mc_protocol.client import Client
-from mc_protocol.event_loop import EventLoop
+from mc_protocol.event_loop import EventDispatcher
 from mc_protocol.mc_types import UUID, Boolean, Double, Long, Short, String, VarInt
 from mc_protocol.mc_types.base import SocketReader
+from mc_protocol.protocols.enums import ConnectionState, HandshakingNextState
 from mc_protocol.protocols.v765.configuration import Configuration
 from mc_protocol.protocols.v765.inbound.login import CompressResponse, LoginSuccessResponse
 from mc_protocol.protocols.v765.inbound.play import (
@@ -42,7 +43,6 @@ from mc_protocol.protocols.v765.outbound.play import (
     TeleportConfirmRequest,
 )
 from mc_protocol.protocols.v765.utils import handshake
-from mc_protocol.states.enums import ConnectionState, HandshakingNextState
 
 
 class OfflinePlayerNamespace:
@@ -65,25 +65,25 @@ class Player:
         # self.position =
         self.entities: dict[int, SpawnEntityResponse] = {}
 
-        EventLoop.subscribe_method(self._login_successful, LoginSuccessResponse)
-        EventLoop.subscribe_method(self._set_threshold, CompressResponse)
-        EventLoop.subscribe_method(self._synchronize_player_position, PositionResponse)
-        EventLoop.subscribe_method(self._keep_alive, KeepAliveResponse)
-        EventLoop.subscribe_method(self._start_playing, LoginResponse)
-        EventLoop.subscribe_method(self._death, CombatDeathResponse)
-        EventLoop.subscribe_method(self._on_damage, DamageEventResponse)
-        EventLoop.subscribe_method(self._update_entity_position, RelEntityMoveResponse)
-        EventLoop.subscribe_method(self._update_health, UpdateHealthResponse)
-        EventLoop.subscribe_method(self._entity_spawned, SpawnEntityResponse)
-        EventLoop.subscribe_method(self._entity_teleport, EntityTeleportResponse)
-        EventLoop.subscribe_method(self._update_entity_position_and_rotation, EntityMoveLookResponse)
-        EventLoop.subscribe_method(self._update_entity_rotation, EntityLookResponse)
-        EventLoop.subscribe_method(self._entities_removed, RemoveEntityResponse)
-        EventLoop.subscribe_method(self._game_tick, UpdateTimeResponse)
-        EventLoop.subscribe_method(self._set_default_spawn_position, SetDefaultSpawnPositionResponse)
-        EventLoop.subscribe_method(self._set_ticking_state, SetTickingStateResponse)
-        EventLoop.subscribe_method(self._step_tick, StepTickResponse)
-        EventLoop.subscribe_method(self._update_chunk_and_light_data, ChunkDataAndLightResponse)
+        EventDispatcher.subscribe_method(self._login_successful, LoginSuccessResponse)
+        EventDispatcher.subscribe_method(self._set_threshold, CompressResponse)
+        EventDispatcher.subscribe_method(self._synchronize_player_position, PositionResponse)
+        EventDispatcher.subscribe_method(self._keep_alive, KeepAliveResponse)
+        EventDispatcher.subscribe_method(self._start_playing, LoginResponse)
+        EventDispatcher.subscribe_method(self._death, CombatDeathResponse)
+        EventDispatcher.subscribe_method(self._on_damage, DamageEventResponse)
+        EventDispatcher.subscribe_method(self._update_entity_position, RelEntityMoveResponse)
+        EventDispatcher.subscribe_method(self._update_health, UpdateHealthResponse)
+        EventDispatcher.subscribe_method(self._entity_spawned, SpawnEntityResponse)
+        EventDispatcher.subscribe_method(self._entity_teleport, EntityTeleportResponse)
+        EventDispatcher.subscribe_method(self._update_entity_position_and_rotation, EntityMoveLookResponse)
+        EventDispatcher.subscribe_method(self._update_entity_rotation, EntityLookResponse)
+        EventDispatcher.subscribe_method(self._entities_removed, RemoveEntityResponse)
+        EventDispatcher.subscribe_method(self._game_tick, UpdateTimeResponse)
+        EventDispatcher.subscribe_method(self._set_default_spawn_position, SetDefaultSpawnPositionResponse)
+        EventDispatcher.subscribe_method(self._set_ticking_state, SetTickingStateResponse)
+        EventDispatcher.subscribe_method(self._step_tick, StepTickResponse)
+        EventDispatcher.subscribe_method(self._update_chunk_and_light_data, ChunkDataAndLightResponse)
         # TODO: 0x25 Work with (Chunk Data and Update Light) - Looks like it's return block entities
         # self.inventory = Inventory(self.player)
         # self.pvp = PVP(self.player)

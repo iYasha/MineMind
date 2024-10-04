@@ -1,4 +1,3 @@
-import abc
 import asyncio
 from collections import defaultdict
 from typing import Callable, Coroutine, Literal, NamedTuple, Type
@@ -6,19 +5,14 @@ from typing import Callable, Coroutine, Literal, NamedTuple, Type
 from mc_protocol.client import Client
 from mc_protocol.mc_types import VarInt
 from mc_protocol.mc_types.base import AsyncBytesIO, SocketReader
-from mc_protocol.states.enums import ConnectionState
-from mc_protocol.states.events import InboundEvent
-
-
-class Observer(abc.ABC):
-    pass
-
+from mc_protocol.protocols.enums import ConnectionState
+from mc_protocol.protocols.protocol_events import InboundEvent
 
 ListenerCallback = Callable[[SocketReader], Coroutine[None, None, None]]
 Listener = NamedTuple('Listener', [('event', Type[InboundEvent] | None), ('callback', ListenerCallback)])
 
 
-class EventLoop:
+class EventDispatcher:
     _listeners: dict[str, dict[int | Literal['*'], list[Listener]]] = defaultdict(lambda: defaultdict(list))
 
     def __init__(self, client: Client):

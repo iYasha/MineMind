@@ -4,8 +4,8 @@ from asyncio import StreamReader, StreamWriter
 
 from mc_protocol.mc_types import VarInt
 from mc_protocol.mc_types.base import AsyncBytesIO
-from mc_protocol.states.enums import ConnectionState
-from mc_protocol.states.events import OutboundEvent
+from mc_protocol.protocols.enums import ConnectionState
+from mc_protocol.protocols.protocol_events import OutboundEvent
 
 
 class Client:

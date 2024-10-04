@@ -1,7 +1,7 @@
 from mc_protocol.mc_types import UUID, Int, Long, String, VarInt, nbt
 from mc_protocol.mc_types.base import SocketReader
-from mc_protocol.states.enums import ConnectionState
-from mc_protocol.states.events import InboundEvent
+from mc_protocol.protocols.enums import ConnectionState
+from mc_protocol.protocols.protocol_events import InboundEvent
 
 
 class PluginMessageResponse(InboundEvent):

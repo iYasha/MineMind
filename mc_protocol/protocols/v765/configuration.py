@@ -1,6 +1,7 @@
 from mc_protocol.client import Client
-from mc_protocol.event_loop import EventLoop
+from mc_protocol.event_loop import EventDispatcher
 from mc_protocol.mc_types.base import SocketReader
+from mc_protocol.protocols.enums import ConnectionState
 from mc_protocol.protocols.v765.inbound.configuration import (
     FeatureFlagResponse,
     FinishConfigurationResponse,
@@ -9,17 +10,16 @@ from mc_protocol.protocols.v765.inbound.configuration import (
     UpdateTagsResponse,
 )
 from mc_protocol.protocols.v765.outbound.configuration import FinishConfigurationRequest
-from mc_protocol.states.enums import ConnectionState
 
 
 class Configuration:
     def __init__(self, client: Client):
         self.client = client
-        EventLoop.subscribe_method(self._plugin_message, PluginMessageResponse)
-        EventLoop.subscribe_method(self._feature_flag, FeatureFlagResponse)
-        EventLoop.subscribe_method(self._registry_data, RegistryDataResponse)
-        EventLoop.subscribe_method(self._update_tags, UpdateTagsResponse)
-        EventLoop.subscribe_method(self._finish_configuration, FinishConfigurationResponse)
+        EventDispatcher.subscribe_method(self._plugin_message, PluginMessageResponse)
+        EventDispatcher.subscribe_method(self._feature_flag, FeatureFlagResponse)
+        EventDispatcher.subscribe_method(self._registry_data, RegistryDataResponse)
+        EventDispatcher.subscribe_method(self._update_tags, UpdateTagsResponse)
+        EventDispatcher.subscribe_method(self._finish_configuration, FinishConfigurationResponse)
 
     async def _plugin_message(self, reader: SocketReader):
         await PluginMessageResponse.from_stream(reader)

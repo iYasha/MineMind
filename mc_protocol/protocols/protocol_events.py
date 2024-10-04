@@ -1,7 +1,7 @@
 import abc
 
 from mc_protocol.mc_types.base import SocketReader
-from mc_protocol.states.enums import ConnectionState
+from mc_protocol.protocols.enums import ConnectionState
 
 
 class Event(abc.ABC):
