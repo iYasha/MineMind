@@ -174,13 +174,13 @@ class NBT:
     """
 
     @classmethod
-    async def from_stream(cls, reader: SocketReader, is_anonymous: bool = False) -> T:
+    async def from_stream(cls, reader: SocketReader, is_anonymous: bool = False) -> T | None:
         first_tag_id = await mc_types.Byte.from_stream(reader)
         if first_tag_id.int == TAG_COMPOUND:
             return await Compound.from_stream(reader, has_name=not is_anonymous)
         tag_type = TAG_REGISTRY.get(first_tag_id.int)
         if tag_type is None:
-            raise ValueError('Unknown tag byte:', first_tag_id.int)
+            return None
         return await tag_type.from_stream(reader, not is_anonymous)
 
 

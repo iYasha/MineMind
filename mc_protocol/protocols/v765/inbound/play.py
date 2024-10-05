@@ -18,6 +18,7 @@ from mc_protocol.mc_types import (
     VarInt,
     nbt,
 )
+from mc_protocol.mc_types.array import BitSet
 from mc_protocol.mc_types.base import MCType, SocketReader
 from mc_protocol.protocols.enums import ConnectionState
 from mc_protocol.protocols.protocol_events import InboundEvent
@@ -495,6 +496,72 @@ class LoginResponse(InboundEvent):
             is_flat=is_flat,
             has_death_location=has_death_location,
             portal_cooldown=portal_cooldown,
+            death_dimension_name=death_dimension_name,
+            death_location=death_location,
+        )
+
+
+class RespawnResponse(InboundEvent):
+    packet_id = 0x45
+    state = ConnectionState.PLAY
+
+    def __init__(
+        self,
+        dimension_type: String,
+        dimension_name: String,
+        hashed_seed: Long,
+        game_mode: UByte,
+        previous_game_mode: Byte,
+        is_debug: Boolean,
+        is_flat: Boolean,
+        has_death_location: Boolean,
+        portal_cooldown: VarInt,
+        data_kept: Byte,
+        death_dimension_name: String | None = None,
+        death_location: Position | None = None,
+    ) -> None:
+        self.dimension_type = dimension_type
+        self.dimension_name = dimension_name
+        self.hashed_seed = hashed_seed
+        self.game_mode = game_mode
+        self.previous_game_mode = previous_game_mode
+        self.is_debug = is_debug
+        self.is_flat = is_flat
+        self.has_death_location = has_death_location
+        self.portal_cooldown = portal_cooldown
+        self.data_kept = data_kept
+        self.death_dimension_name = death_dimension_name
+        self.death_location = death_location
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'RespawnResponse':
+        dimension_type = await String.from_stream(reader)
+        dimension_name = await String.from_stream(reader)
+        hashed_seed = await Long.from_stream(reader)
+        game_mode = await UByte.from_stream(reader)
+        previous_game_mode = await Byte.from_stream(reader)
+        is_debug = await Boolean.from_stream(reader)
+        is_flat = await Boolean.from_stream(reader)
+        has_death_location = await Boolean.from_stream(reader)
+        if has_death_location:
+            death_dimension_name = await String.from_stream(reader)
+            death_location = await Position.from_stream(reader)
+        else:
+            death_dimension_name = None
+            death_location = None
+        portal_cooldown = await VarInt.from_stream(reader)
+        data_kept = await Byte.from_stream(reader)
+        return cls(
+            dimension_type=dimension_type,
+            dimension_name=dimension_name,
+            hashed_seed=hashed_seed,
+            game_mode=game_mode,
+            previous_game_mode=previous_game_mode,
+            is_debug=is_debug,
+            is_flat=is_flat,
+            has_death_location=has_death_location,
+            portal_cooldown=portal_cooldown,
+            data_kept=data_kept,
             death_dimension_name=death_dimension_name,
             death_location=death_location,
         )
@@ -1463,41 +1530,152 @@ class StepTickResponse(InboundEvent):
         )
 
 
+class LengthPrefixedByteArray(MCType):
+
+    def __init__(
+        self,
+        length: VarInt,
+        data: bytes,
+    ):
+        self.length = length
+        self.data = data
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'LengthPrefixedByteArray':
+        length = await VarInt.from_stream(reader)
+        return cls(
+            length=length,
+            data=await reader.read(length.int),
+        )
+
+
+class PackedXZ(MCType):
+
+    def __init__(self, x: int, z: int):
+        self.x = x
+        self.z = z
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'PackedXZ':
+        value = await UByte.from_stream(reader)
+        return cls(
+            x=(value.int >> 4) & 15,
+            z=value.int & 15,
+        )
+
+
 class ChunkDataAndLightResponse(InboundEvent):
     packet_id = 0x25
     state = ConnectionState.PLAY
 
-    """
-    Chunk X	Int	Chunk coordinate (block coordinate divided by 16, rounded down)
-    Chunk Z	Int	Chunk coordinate (block coordinate divided by 16, rounded down)
-    Heightmaps	NBT	See Chunk Format#Heightmaps structure
-    Size	VarInt	Size of Data in bytes
-    Data	Byte Array	See Chunk Format#Data structure
-    Number of block entities	VarInt	Number of elements in the following array
-    Block Entity	Packed XZ	Array	Unsigned Byte	The packed section coordinates are relative to the chunk they are in. Values 0-15 are valid.
-    packed_xz = ((blockX & 15) << 4) | (blockZ & 15) // encode
-    x = packed_xz >> 4, z = packed_xz & 15 // decode
-    Y	Short	The height relative to the world
-    Type	VarInt	The type of block entity
-    Data	NBT	The block entity's data, without the X, Y, and Z values
-    """
+    class BlockEntity(MCType):
+
+        def __init__(
+            self,
+            packed_xz: PackedXZ,
+            y: Short,
+            block_type: VarInt,
+            data: nbt.Compound | None,
+        ):
+            self.packed_xz = packed_xz
+            self.y = y
+            self.block_type = block_type
+            self.data = data
+
+        @classmethod
+        async def from_stream(cls, reader: SocketReader, **kwargs) -> 'ChunkDataAndLightResponse.BlockEntity':
+            return cls(
+                packed_xz=await PackedXZ.from_stream(reader),
+                y=await Short.from_stream(reader),
+                block_type=await VarInt.from_stream(reader),
+                data=await nbt.NBT.from_stream(
+                    reader,
+                    # is_anonymous=True,
+                ),
+            )
 
     def __init__(
         self,
         chunk_x: Int,
         chunk_z: Int,
-        heightmaps: bytes,
+        heightmaps: nbt.Compound,
+        size: VarInt,
+        data: bytes,
+        number_of_block_entities: VarInt,
+        block_entities: Array[BlockEntity],
+        sky_light_mask: BitSet,
+        block_light_mask: BitSet,
+        empty_sky_light_mask: BitSet,
+        empty_block_light_mask: BitSet,
+        skylight_count: VarInt,
+        sky_light: Array[LengthPrefixedByteArray],
+        block_light_count: VarInt,
+        block_light: Array[LengthPrefixedByteArray],
     ) -> None:
         self.chunk_x = chunk_x
         self.chunk_z = chunk_z
         self.heightmaps = heightmaps
+        self.size = size
+        self.data = data
+        self.number_of_block_entities = number_of_block_entities
+        self.block_entities = block_entities
+        self.sky_light_mask = sky_light_mask
+        self.block_light_mask = block_light_mask
+        self.empty_sky_light_mask = empty_sky_light_mask
+        self.empty_block_light_mask = empty_block_light_mask
+        self.skylight_count = skylight_count
+        self.sky_light = sky_light
+        self.block_light_count = block_light_count
+        self.block_light = block_light
 
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'ChunkDataAndLightResponse':
+        chunk_x = await Int.from_stream(reader)
+        chunk_z = await Int.from_stream(reader)
+        heightmaps = await nbt.NBT.from_stream(  # type: ignore[func-returns-value]
+            reader,
+            is_anonymous=True,
+        )
+        size = await VarInt.from_stream(reader)
+        data = await reader.read(size.int)
+        number_of_block_entities = await VarInt.from_stream(reader)
+        block_entities = await Array[ChunkDataAndLightResponse.BlockEntity].from_stream(
+            reader,
+            number_of_block_entities.int,
+            ChunkDataAndLightResponse.BlockEntity,
+        )
+        sky_light_mask = await BitSet.from_stream(reader)
+        block_light_mask = await BitSet.from_stream(reader)
+        empty_sky_light_mask = await BitSet.from_stream(reader)
+        empty_block_light_mask = await BitSet.from_stream(reader)
+        skylight_count = await VarInt.from_stream(reader)
+        sky_light = await Array[LengthPrefixedByteArray].from_stream(
+            reader,
+            skylight_count.int,
+            LengthPrefixedByteArray,
+        )
+        block_light_count = await VarInt.from_stream(reader)
+        block_light = await Array[LengthPrefixedByteArray].from_stream(
+            reader,
+            block_light_count.int,
+            LengthPrefixedByteArray,
+        )
         return cls(
-            chunk_x=await Int.from_stream(reader),
-            chunk_z=await Int.from_stream(reader),
-            heightmaps=await reader.read(-1),
+            chunk_x=chunk_x,
+            chunk_z=chunk_z,
+            heightmaps=heightmaps,  # type: ignore[arg-type]
+            size=size,
+            data=data,
+            number_of_block_entities=number_of_block_entities,
+            block_entities=block_entities,
+            sky_light_mask=sky_light_mask,
+            block_light_mask=block_light_mask,
+            empty_sky_light_mask=empty_sky_light_mask,
+            empty_block_light_mask=empty_block_light_mask,
+            skylight_count=skylight_count,
+            sky_light=sky_light,
+            block_light_count=block_light_count,
+            block_light=block_light,
         )
 
 
@@ -1703,26 +1881,36 @@ class PlayerAction(MCType):
             and PlayerAction.Action.INITIALIZE_CHAT not in exclude
         ):
             action = PlayerAction.Action.INITIALIZE_CHAT
-            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.InitializeChat.from_stream(reader)  # type: ignore[no-redef]
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.InitializeChat.from_stream(  # type: ignore[no-redef]
+                reader,
+            )
         elif (
             actions.int & PlayerAction.Action.UPDATE_GAME_MODE.value
             and PlayerAction.Action.UPDATE_GAME_MODE not in exclude
         ):
-            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateGameMode.from_stream(reader)  # type: ignore[no-redef]
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateGameMode.from_stream(  # type: ignore[no-redef]
+                reader,
+            )
             action = PlayerAction.Action.UPDATE_GAME_MODE
         elif actions.int & PlayerAction.Action.UPDATE_LISTED.value and PlayerAction.Action.UPDATE_LISTED not in exclude:
-            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateListed.from_stream(reader)  # type: ignore[no-redef]
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateListed.from_stream(  # type: ignore[no-redef]
+                reader,
+            )
             action = PlayerAction.Action.UPDATE_LISTED
         elif (
             actions.int & PlayerAction.Action.UPDATE_LATENCY.value and PlayerAction.Action.UPDATE_LATENCY not in exclude
         ):
-            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateLatency.from_stream(reader)  # type: ignore[no-redef]
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateLatency.from_stream(  # type: ignore[no-redef]
+                reader,
+            )
             action = PlayerAction.Action.UPDATE_LATENCY
         elif (
             actions.int & PlayerAction.Action.UPDATE_DISPLAY_NAME.value
             and PlayerAction.Action.UPDATE_DISPLAY_NAME not in exclude
         ):
-            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateDisplayName.from_stream(reader)  # type: ignore[no-redef]
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateDisplayName.from_stream(  # type: ignore[no-redef]
+                reader,
+            )
             action = PlayerAction.Action.UPDATE_DISPLAY_NAME
         else:
             raise ValueError("Unknown PlayerAction action")

@@ -1,4 +1,4 @@
-from mc_protocol.mc_types.array import Array
+from mc_protocol.mc_types.array import Array, BitSet
 from mc_protocol.mc_types.boolean import Boolean
 from mc_protocol.mc_types.float import Double, Float
 from mc_protocol.mc_types.int import Byte, Int, Long, Short, UByte, UInt, ULong, UShort
@@ -25,4 +25,5 @@ __all__ = (
     'Identifier',
     'Array',
     'Position',
+    'BitSet',
 )

@@ -77,7 +77,7 @@ class RegistryDataResponse(InboundEvent):
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'RegistryDataResponse':
         return cls(
-            registry_codec=await nbt.NBT.from_stream(reader, is_anonymous=True),
+            registry_codec=await nbt.NBT.from_stream(reader, is_anonymous=True),  # type: ignore[arg-type]
         )
 
 

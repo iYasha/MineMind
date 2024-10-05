@@ -249,8 +249,8 @@ class Player(Entity):
         self.username = username
         self.eye_height = HitBox.PLAYER_EYE_HEIGHT.value
 
-
-# DEBUG_PROTOCOL = DEBUG_GAME_EVENTS
+    def __repr__(self):
+        return f'<Player {self.username} {self.entity_id=}>'
 
 
 class Entities(InteractionModule):

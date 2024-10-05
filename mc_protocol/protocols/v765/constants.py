@@ -980,3 +980,25 @@ ENTITIES = {
         'category': 'Projectiles',
     },
 }
+DIMENSIONS = {
+    "overworld": {
+        "name": "overworld",
+        "minY": -64,
+        "height": 384,
+    },
+    "overworld_caves": {
+        "name": "overworld_caves",
+        "minY": -64,
+        "height": 384,
+    },
+    "the_end": {
+        "name": "the_end",
+        "minY": 0,
+        "height": 256,
+    },
+    "the_nether": {
+        "name": "the_nether",
+        "minY": 0,
+        "height": 256,
+    },
+}

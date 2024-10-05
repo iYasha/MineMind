@@ -1,6 +1,8 @@
 from typing import TypeVar
 
 from mc_protocol.mc_types.base import MCType, SocketReader
+from mc_protocol.mc_types.int import Long
+from mc_protocol.mc_types.varint import VarInt
 
 T = TypeVar('T', bound=MCType)
 
@@ -13,3 +15,11 @@ class Array(list[T], MCType):
         for _ in range(length):
             instance.append(await mc_type.from_stream(reader, **type_params))
         return instance
+
+
+class BitSet(Array[Long]):
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'BitSet':  # type: ignore[override]
+        length = await VarInt.from_stream(reader)
+        return await super().from_stream(reader, length.int, Long, **kwargs)  # type: ignore[return-value]
