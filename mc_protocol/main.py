@@ -2,9 +2,8 @@ import asyncio
 
 from mc_protocol.client import Client
 from mc_protocol.dispatcher import EventDispatcher
-from mc_protocol.protocols.v765.entity import Entities
+from mc_protocol.protocols.v765.bot import Bot
 from mc_protocol.protocols.v765.inbound.status import ServerInfoResponse
-from mc_protocol.protocols.v765.player import Player
 
 
 @EventDispatcher.subscribe(ServerInfoResponse)
@@ -20,11 +19,8 @@ async def main():
         # server = Server(client)
         # print(await server.get_info())
 
-        player = Player(client)
+        player = Bot(client)
         await player.login('Notch')
-
-        Entities(client)
-        print('created entities')
 
         async with player.spawned():
             await player.chat_message('Hello, world!')

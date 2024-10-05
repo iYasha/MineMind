@@ -725,6 +725,15 @@ class PositionResponse(InboundEvent):
     packet_id = 0x3E
     state = ConnectionState.PLAY
 
+    class Flag(int, Enum):
+        X = 0x01
+        Y = 0x02
+        Z = 0x04
+
+        # TODO: Who to believe ? The wiki or the protocol ? The wiki says 0x08 is pitch, the protocol says it's yaw
+        YAW = 0x08
+        PITCH = 0x10
+
     def __init__(
         self,
         x: Double,

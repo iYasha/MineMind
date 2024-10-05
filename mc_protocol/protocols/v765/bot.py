@@ -8,11 +8,12 @@ import pytz
 from mc_protocol import DEBUG_GAME_EVENTS, DEBUG_PROTOCOL
 from mc_protocol.client import Client
 from mc_protocol.dispatcher import EventDispatcher
-from mc_protocol.mc_types import UUID, Boolean, Double, Long, Short, String, VarInt
+from mc_protocol.mc_types import UUID, Boolean, Double, Float, Long, Short, String, VarInt
 from mc_protocol.protocols.base import InteractionModule
 from mc_protocol.protocols.enums import ConnectionState, HandshakingNextState
 from mc_protocol.protocols.utils import get_logger
 from mc_protocol.protocols.v765.configuration import Configuration
+from mc_protocol.protocols.v765.entity import Entities, MCMath, Vector3
 from mc_protocol.protocols.v765.handshake import handshake
 from mc_protocol.protocols.v765.inbound.login import CompressResponse, LoginSuccessResponse
 from mc_protocol.protocols.v765.inbound.play import (
@@ -36,6 +37,7 @@ from mc_protocol.protocols.v765.outbound.play import (
     HeldItemSlotRequest,
     InteractRequest,
     KeepAliveRequest,
+    PositionLookRequest,
     PositionRequest,
     TeleportConfirmRequest,
 )
@@ -45,18 +47,25 @@ class OfflinePlayerNamespace:
     bytes = b'OfflinePlayer:'
 
 
-class Player(InteractionModule):
-    logger = get_logger('Player')
+# DEBUG_PROTOCOL = DEBUG_GAME_EVENTS
+
+
+class Bot(InteractionModule):
+    logger = get_logger('Bot')
 
     def __init__(self, client: Client):
         self.client = client
         self.configuration = None
-        self.player_uuid: UUID | None = None
-        self.player_entity_id: int | None = None
+
+        self.username: str | None = None
+        self.uuid: uuid.UUID | None = None
+        self.entity_id: int | None = None
 
         self.health: float = 20.0
         self.food: int = 20
         self.saturation: float = 5.0
+
+        self.entities = Entities(client)
 
         # self.position =
 
@@ -67,9 +76,11 @@ class Player(InteractionModule):
     async def login(self, username: str) -> None:
         # TODO: currently only supports offline mode
         await handshake(self.client, HandshakingNextState.LOGIN)
+
         # TODO: Argument 1 to "uuid3" has incompatible type "type[OfflinePlayerNamespace]"; expected "UUID"  [arg-type]
         user_uuid = UUID(uuid.uuid3(OfflinePlayerNamespace, username))  # type: ignore[arg-type]
-        self.player_uuid = user_uuid
+        self.uuid = user_uuid.uuid
+        self.username = username
 
         request = LoginStartRequest(String(username), user_uuid)
         await self.client.send_packet(request)
@@ -124,17 +135,93 @@ class Player(InteractionModule):
         )
         self.logger.log(DEBUG_GAME_EVENTS, f'Moved to {x=} {y=} {z=}')
 
+    async def set_position_and_look(self, position: Vector3, yaw: float, pitch: float, on_ground: bool = True):
+        # probably it's better to save last_seen_position
+        await self.client.send_packet(
+            PositionLookRequest(
+                x=Double(position.x),
+                y=Double(position.y),
+                z=Double(position.z),
+                yaw=Float(yaw),
+                pitch=Float(pitch),
+                on_ground=Boolean(on_ground),
+            ),
+        )
+        self.logger.log(DEBUG_GAME_EVENTS, f'Moved to {position=} {yaw=} {pitch=} {on_ground=}')
+
     @EventDispatcher.subscribe(PositionResponse)
     async def _synchronize_player_position(self, data: PositionResponse):
+        if self.entity_id is None:
+            self.logger.log(DEBUG_PROTOCOL, 'Entity id is not set. Skipping position synchronization.')
+            return
+        if self.username is None:
+            self.logger.log(DEBUG_PROTOCOL, 'Username is not set. Skipping position synchronization.')
+            return
+        if self.uuid is None:
+            self.logger.log(DEBUG_PROTOCOL, 'UUID is not set. Skipping position synchronization.')
+            return
+        entity = self.entities.get_by_id(self.entity_id)
+        if entity is not None:
+            velocity = entity.velocity
+            position = entity.position
+            yaw = entity.yaw
+        else:
+            velocity = Vector3(0, 0, 0)
+            position = Vector3(0, 0, 0)
+            yaw = 0
+
+        # Velocity is only set to 0 if the flag is not set, otherwise keep current velocity
+        new_velocity = Vector3(
+            x=velocity.x if data.flags.int & data.Flag.X else 0,
+            y=velocity.y if data.flags.int & data.Flag.Y else 0,
+            z=velocity.z if data.flags.int & data.Flag.Z else 0,
+        )
+
+        # If flag is set, then the corresponding value is relative, else it is absolute
+        new_position = Vector3(
+            x=position.x + data.x.float if data.flags.int & data.Flag.X else data.x.float,
+            y=position.y + data.y.float if data.flags.int & data.Flag.Y else data.y.float,
+            z=position.z + data.z.float if data.flags.int & data.Flag.Z else data.z.float,
+        )
+
+        new_yaw = (MCMath.to_notchian_yaw(yaw) if data.flags.int & data.Flag.YAW else 0) + data.yaw.float
+        new_pitch = (MCMath.to_notchian_pitch(yaw) if data.flags.int & data.Flag.PITCH else 0) + data.pitch.float
+
+        if entity is None:
+            self.entities.create_bot(
+                player_uuid=self.uuid,
+                entity_id=self.entity_id,
+                username=self.username,
+                velocity=new_velocity,
+                position=new_position,
+                yaw=MCMath.to_notchian_yaw_byte(new_yaw),
+                pitch=MCMath.to_notchian_pitch_byte(new_pitch),
+                on_ground=False,
+            )
+        else:
+            entity.velocity = new_velocity
+            entity.position = new_position
+            entity.on_ground = False
+
+            # TODO: Not sure why we use from_notchian_yaw/pitch instead of from_notchian_yaw/pitch_byte
+            entity.yaw = MCMath.from_notchian_yaw(new_yaw)
+            entity.pitch = MCMath.from_notchian_pitch(new_pitch)
+
+            self.logger.log(
+                DEBUG_PROTOCOL,
+                f'Position synchronized. {new_position=} {new_yaw=} {new_pitch=}',
+            )
+
+        await self.client.send_packet(TeleportConfirmRequest(data.teleport_id))
         self.logger.log(
             DEBUG_PROTOCOL,
-            f'Teleportation confirmed. Position: {data.x=} {data.y=} {data.z=} {data.yaw=} {data.pitch=} {data.flags=} {data.teleport_id=}',
+            f'Teleportation confirmed. {data.teleport_id=}',
         )
-        await self.client.send_packet(TeleportConfirmRequest(data.teleport_id))
-        # Respawn happens twice, on_death and here
+
+        await self.set_position_and_look(new_position, new_yaw, new_pitch, on_ground=False)
+
+        # TODO: Respawn happens twice, on_death and here
         await self.respawn()
-        # await asyncio.sleep(1)
-        # await self._set_player_position(Double(response.x.decimal + 2), Double(response.y.decimal - Decimal(1.62) - Decimal(0.38)), response.z)
 
     @EventDispatcher.subscribe(KeepAliveResponse)
     async def _keep_alive(self, data: KeepAliveResponse):
@@ -143,21 +230,21 @@ class Player(InteractionModule):
 
     @EventDispatcher.subscribe(LoginResponse)
     async def _start_playing(self, data: LoginResponse):
-        self.player_entity_id = data.entity_id.int
-        self.logger.log(DEBUG_PROTOCOL, f'Player entity id: {self.player_entity_id=}')
+        self.entity_id = data.entity_id.int
+        self.logger.log(DEBUG_PROTOCOL, f'Bot entity id: {self.entity_id=}')
 
     @EventDispatcher.subscribe(CombatDeathResponse)
     async def _death(self, data: CombatDeathResponse):
-        if data.player_id.int == self.player_entity_id:
-            self.logger.log(DEBUG_GAME_EVENTS, f'Player died. Cause: {data.message}')
+        if data.player_id.int == self.entity_id:
+            self.logger.log(DEBUG_GAME_EVENTS, f'Bot died. Cause: {data.message}')
             await self.respawn()
         else:
             self.logger.log(DEBUG_GAME_EVENTS, f'Entity {data.player_id.int} died. Cause: {data.message}')
 
     @EventDispatcher.subscribe(DamageEventResponse)
     async def _on_damage(self, data: DamageEventResponse):
-        if data.entity_id.int == self.player_entity_id:
-            self.logger.log(DEBUG_GAME_EVENTS, f'Player received damage from {data.source_type_id}')
+        if data.entity_id.int == self.entity_id:
+            self.logger.log(DEBUG_GAME_EVENTS, f'Bot received damage from {data.source_type_id}')
             await self.attack(data.source_direct_id)
         else:
             self.logger.log(
@@ -204,6 +291,6 @@ class Player(InteractionModule):
 
     @asynccontextmanager
     async def spawned(self):
-        while not self.player_entity_id:
+        while not self.entity_id:
             await asyncio.sleep(0.000001)
         yield
