@@ -3,7 +3,9 @@ from typing import Tuple
 from mc_protocol.mc_types.base import MCType, SocketReader
 
 
-class VarInt(MCType):
+class VarNum(MCType):
+    max_size: int
+
     def __init__(self, value: int | bytes) -> None:
         self.int_value = None
         self.bytes_value = None
@@ -16,7 +18,7 @@ class VarInt(MCType):
             raise TypeError('Value must be an int or bytes object')
 
     @classmethod
-    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'VarInt':
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'VarNum':
         num_read = 0
         result = 0
         while True:
@@ -27,7 +29,7 @@ class VarInt(MCType):
             result |= (value & 0x7F) << (7 * num_read)
 
             num_read += 1
-            if num_read > 5:
+            if num_read > cls.max_size:
                 raise IOError("VarInt is too big")
 
             if (value & 0x80) == 0:
@@ -100,3 +102,11 @@ class VarInt(MCType):
     @property
     def int(self) -> int:
         return int(self)
+
+
+class VarInt(VarNum):
+    max_size = 5
+
+
+class VarLong(VarNum):
+    max_size = 10

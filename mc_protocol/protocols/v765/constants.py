@@ -1,3 +1,13 @@
+import json
+
+# get working dir
+import os
+from pathlib import Path
+
+working_dir = Path(os.getcwd())
+BLOCKS = json.load(open(os.path.join(working_dir, 'protocols/v765/minecraft-data/blocks.json')))
+BIOMES = json.load(open(os.path.join(working_dir, 'protocols/v765/minecraft-data/biomes.json')))
+
 ENTITIES = {
     0: {
         'name': 'allay',

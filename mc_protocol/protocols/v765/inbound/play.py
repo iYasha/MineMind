@@ -16,6 +16,7 @@ from mc_protocol.mc_types import (
     String,
     UByte,
     VarInt,
+    VarLong,
     nbt,
 )
 from mc_protocol.mc_types.array import BitSet
@@ -147,6 +148,29 @@ class AnimationResponse(InboundEvent):
         return cls(
             entity_id=await VarInt.from_stream(reader),
             animation=await UByte.from_stream(reader),
+        )
+
+
+class BlockEntityDataResponse(InboundEvent):
+    packet_id = 0x07
+    state = ConnectionState.PLAY
+
+    def __init__(
+        self,
+        location: Position,
+        block_type: VarInt,
+        nbt_data: nbt.Compound | None,
+    ) -> None:
+        self.location = location
+        self.block_type = block_type
+        self.nbt_data = nbt_data
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'BlockEntityDataResponse':
+        return cls(
+            location=await Position.from_stream(reader),
+            block_type=await VarInt.from_stream(reader),
+            nbt_data=await nbt.NBT.from_stream(reader, is_anonymous=True),
         )
 
 
@@ -1590,7 +1614,7 @@ class ChunkDataAndLightResponse(InboundEvent):
                 block_type=await VarInt.from_stream(reader),
                 data=await nbt.NBT.from_stream(
                     reader,
-                    # is_anonymous=True,
+                    is_anonymous=True,
                 ),
             )
 
@@ -1955,6 +1979,81 @@ class PlayerInArray(MCType):
         )
 
 
+class UpdateSectionBlocksResponse(InboundEvent):
+    packet_id = 0x47
+    state = ConnectionState.PLAY
+
+    class ChunkPosition(MCType):
+
+        def __init__(self, x: float, y: float, z: float):
+            self.x = x
+            self.y = y
+            self.z = z
+
+        @classmethod
+        async def from_stream(cls, reader: SocketReader, **kwargs) -> 'UpdateSectionBlocksResponse.ChunkPosition':
+            raw_chunk_position = (await Long.from_stream(reader)).int
+            x = (raw_chunk_position >> 42) & 0x3FFFFF
+            y = raw_chunk_position & 0xFFFFF
+            z = (raw_chunk_position >> 20) & 0x3FFFFF
+
+            if x & (1 << 21):
+                x -= 1 << 22
+
+            if y & (1 << 21):
+                y -= 1 << 22
+
+            if z & (1 << 21):
+                z -= 1 << 22
+
+            return cls(x, y, z)
+
+        def __repr__(self):
+            return f"ChunkPosition(x={self.x}, y={self.y}, z={self.z})"
+
+    class Block(MCType):
+
+        def __init__(self, state_id: int, x: float, y: float, z: float):
+            self.state_id = state_id
+            self.x = x
+            self.y = y
+            self.z = z
+
+        @classmethod
+        async def from_stream(cls, reader: SocketReader, **kwargs):
+            raw_block = (await VarLong.from_stream(reader)).int
+
+            return cls(
+                state_id=raw_block >> 12,
+                x=(raw_block >> 8) & 0xF,
+                y=(raw_block & 0xF),
+                z=(raw_block >> 4) & 0xF,
+            )
+
+    def __init__(
+        self,
+        chunk_position: ChunkPosition,
+        blocks_count: VarInt,
+        blocks: Array[Block],
+    ) -> None:
+        self.chunk_position = chunk_position
+        self.blocks_count = blocks_count
+        self.blocks = blocks
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'UpdateSectionBlocksResponse':
+        chunk_position = await UpdateSectionBlocksResponse.ChunkPosition.from_stream(reader)
+        blocks_count = await VarInt.from_stream(reader)
+        blocks = await Array[UpdateSectionBlocksResponse.Block].from_stream(
+            reader, blocks_count.int, UpdateSectionBlocksResponse.Block
+        )
+        return cls(
+            chunk_position=chunk_position,
+            blocks_count=blocks_count,
+            blocks=blocks,
+        )
+
+
 class PlayerInfoUpdateResponse(InboundEvent):
     packet_id = 0x3C
     state = ConnectionState.PLAY
@@ -1983,6 +2082,26 @@ class PlayerInfoUpdateResponse(InboundEvent):
             actions=actions,
             number_of_players=number_of_players,
             players=players,
+        )
+
+
+class UpdateBlockResponse(InboundEvent):
+    packet_id = 0x09
+    state = ConnectionState.PLAY
+
+    def __init__(
+        self,
+        location: Position,
+        block_id: VarInt,
+    ) -> None:
+        self.location = location
+        self.block_id = block_id
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'UpdateBlockResponse':
+        return cls(
+            location=await Position.from_stream(reader),
+            block_id=await VarInt.from_stream(reader),
         )
 
 

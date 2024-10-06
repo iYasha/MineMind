@@ -11,14 +11,13 @@ from mc_protocol.dispatcher import EventDispatcher
 from mc_protocol.mc_types import UUID, Boolean, Double, Float, Long, Short, String, VarInt
 from mc_protocol.protocols.base import InteractionModule
 from mc_protocol.protocols.enums import ConnectionState, HandshakingNextState
-from mc_protocol.protocols.game import Game
 from mc_protocol.protocols.utils import get_logger
 from mc_protocol.protocols.v765.configuration import Configuration
 from mc_protocol.protocols.v765.entity import Entities, MCMath, Player, Vector3
+from mc_protocol.protocols.v765.game import Game
 from mc_protocol.protocols.v765.handshake import handshake
 from mc_protocol.protocols.v765.inbound.login import CompressResponse, LoginSuccessResponse
 from mc_protocol.protocols.v765.inbound.play import (
-    ChunkDataAndLightResponse,
     CombatDeathResponse,
     DamageEventResponse,
     KeepAliveResponse,
@@ -43,6 +42,7 @@ from mc_protocol.protocols.v765.outbound.play import (
     TeleportConfirmRequest,
 )
 from mc_protocol.protocols.v765.physics import Physics
+from mc_protocol.protocols.v765.world import World
 
 
 class OfflinePlayerNamespace:
@@ -66,6 +66,7 @@ class Bot(InteractionModule):
         self.entities = Entities(client)
         self.physics = Physics(client, self)
         self.game = Game(client)
+        self.world = World(client)
 
         # TODO: 0x25 Work with (Chunk Data and Update Light) - Looks like it's return block entities
         # self.inventory = Inventory(self.player)
@@ -98,11 +99,6 @@ class Bot(InteractionModule):
     async def _login_successful(self, data: LoginSuccessResponse):
         self.logger.log(DEBUG_GAME_EVENTS, f'User {data.username} logged in successfully!')
         await self.login_acknowledged()
-
-    @EventDispatcher.subscribe(ChunkDataAndLightResponse)
-    async def _update_chunk_and_light_data(self, data: ChunkDataAndLightResponse):
-        self.logger.log(DEBUG_PROTOCOL, 'Chunk data and light received!')
-        # print(data)
 
     @EventDispatcher.subscribe(CompressResponse)
     async def _set_threshold(self, data: CompressResponse):
@@ -251,6 +247,16 @@ class Bot(InteractionModule):
 
     @EventDispatcher.subscribe(DamageEventResponse)
     async def _on_damage(self, data: DamageEventResponse):
+        # self.world.get_block_at(self.entity.position)
+        print(
+            self.world.get_block_at(
+                Vector3(
+                    40.700,
+                    68,
+                    -528.300,
+                ),
+            ),
+        )
         if data.entity_id.int == self.entity_id:
             self.logger.log(
                 DEBUG_GAME_EVENTS,

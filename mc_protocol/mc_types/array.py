@@ -2,7 +2,7 @@ from typing import TypeVar
 
 from mc_protocol.mc_types.base import MCType, SocketReader
 from mc_protocol.mc_types.int import Long
-from mc_protocol.mc_types.varint import VarInt
+from mc_protocol.mc_types.varnum import VarInt
 
 T = TypeVar('T', bound=MCType)
 

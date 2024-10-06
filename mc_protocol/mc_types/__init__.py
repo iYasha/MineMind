@@ -5,7 +5,7 @@ from mc_protocol.mc_types.int import Byte, Int, Long, Short, UByte, UInt, ULong,
 from mc_protocol.mc_types.position import Position
 from mc_protocol.mc_types.string import Identifier, String
 from mc_protocol.mc_types.uuid import UUID
-from mc_protocol.mc_types.varint import VarInt
+from mc_protocol.mc_types.varnum import VarInt, VarLong
 
 __all__ = (
     'VarInt',
@@ -26,4 +26,5 @@ __all__ = (
     'Array',
     'Position',
     'BitSet',
+    'VarLong',
 )

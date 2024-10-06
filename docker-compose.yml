@@ -9,5 +9,6 @@ services:
       EULA: "TRUE"
       ONLINE_MODE: "FALSE"
       VERSION: "1.20.3"
+      OPS: "iYasha"
     volumes:
       - ./data:/data

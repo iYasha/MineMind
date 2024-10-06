@@ -6,6 +6,7 @@ from typing import Any
 from mc_protocol import DEBUG_PROTOCOL
 from mc_protocol.client import Client
 from mc_protocol.dispatcher import EventDispatcher
+from mc_protocol.mc_types.base import Vector3
 from mc_protocol.protocols.base import InteractionModule
 from mc_protocol.protocols.utils import get_logger
 from mc_protocol.protocols.v765.constants import ENTITIES
@@ -91,23 +92,6 @@ class MCMath:
             velocity.y * cls.FROM_NOTCH_VEL,
             velocity.z * cls.FROM_NOTCH_VEL,
         )
-
-
-class Vector3:
-
-    def __init__(self, x: float, y: float, z: float):
-        # TODO: Probably better to use a Decimal or just Vector3 class
-        self.x = x
-        self.y = y
-        self.z = z
-
-    def translate(self, dx: float, dy: float, dz: float):
-        self.x += dx
-        self.y += dy
-        self.z += dz
-
-    def __repr__(self):
-        return f'<Vector3 {self.x=} {self.y=} {self.z=}>'
 
 
 class Entity:

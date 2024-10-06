@@ -2,7 +2,7 @@ from typing import Type
 
 from mc_protocol.mc_types.base import MCType, SocketReader
 from mc_protocol.mc_types.int import Int
-from mc_protocol.mc_types.varint import VarInt
+from mc_protocol.mc_types.varnum import VarInt
 
 
 class String(MCType):

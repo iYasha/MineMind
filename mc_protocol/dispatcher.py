@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, Callable, Coroutine, Literal, NamedTuple, Type, Union
 
@@ -90,6 +91,8 @@ class EventDispatcher:
         except Exception as e:
             packet_id = getattr(event, 'packet_id', None)
             self.logger.error(f'Error while invoking callback {callback} for event {packet_id}: {e}')
+            if int(os.getenv('DEBUG', -1)):
+                raise e
 
     async def submit_event(self, packet_id: VarInt, raw_data: AsyncBytesIO) -> None:
         listeners = (
