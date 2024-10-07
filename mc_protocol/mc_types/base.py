@@ -31,6 +31,7 @@ class Vector3:
         self.x += dx
         self.y += dy
         self.z += dz
+        return self
 
     def scale(self, scalar: int) -> 'Vector3':
         self.x *= scalar
@@ -56,3 +57,25 @@ class Vector3:
             self.z = math.floor(self.z)
             return self
         return Vector3(math.floor(self.x), math.floor(self.y), math.floor(self.z))
+
+    def copy(self) -> 'Vector3':
+        return Vector3(self.x, self.y, self.z)
+
+    def norm(self) -> float:
+        return math.sqrt(self.x**2 + self.y**2 + self.z**2)
+
+    def normalize(self):
+        norm = self.norm()
+        if norm != 0:
+            self.x /= norm
+            self.y /= norm
+            self.z /= norm
+        return self
+
+    def add(self, other: 'Vector3', inplace=False) -> 'Vector3':
+        if inplace:
+            self.x += other.x
+            self.y += other.y
+            self.z += other.z
+            return self
+        return Vector3(self.x + other.x, self.y + other.y, self.z + other.z)

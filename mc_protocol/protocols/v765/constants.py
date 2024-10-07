@@ -6,6 +6,19 @@ from pathlib import Path
 
 working_dir = Path(os.getcwd())
 BLOCKS = json.load(open(os.path.join(working_dir, 'protocols/v765/minecraft-data/blocks.json')))
+BLOCK_COLLISION_SHAPES = json.load(
+    open(os.path.join(working_dir, 'protocols/v765/minecraft-data/blockCollisionShapes.json')),
+)
+
+# TODO: Make it parse dynamically
+WATER_BLOCK_ID = 32
+WATER_LIKE_BLOCK_IDS = {126, 127, 678, 731}
+LAVA_BLOCK_ID = 33
+SLIME_BLOCK_ID = 463
+COB_WEB_ID = 122
+BUBBLE_COLUMN_ID = 731
+AIR_BLOCK_ID = 0
+
 BIOMES = json.load(open(os.path.join(working_dir, 'protocols/v765/minecraft-data/biomes.json')))
 
 ENTITIES = {

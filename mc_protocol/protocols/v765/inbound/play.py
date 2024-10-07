@@ -302,17 +302,17 @@ class UnloadChunkResponse(InboundEvent):
 
     def __init__(
         self,
-        chunkz: Int,
-        chunkx: Int,
+        chunk_z: Int,
+        chunk_x: Int,
     ) -> None:
-        self.chunkz = chunkz
-        self.chunkx = chunkx
+        self.chunk_z = chunk_z
+        self.chunk_x = chunk_x
 
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'UnloadChunkResponse':
         return cls(
-            chunkz=await Int.from_stream(reader),
-            chunkx=await Int.from_stream(reader),
+            chunk_z=await Int.from_stream(reader),
+            chunk_x=await Int.from_stream(reader),
         )
 
 
@@ -1993,6 +1993,11 @@ class UpdateSectionBlocksResponse(InboundEvent):
         @classmethod
         async def from_stream(cls, reader: SocketReader, **kwargs) -> 'UpdateSectionBlocksResponse.ChunkPosition':
             raw_chunk_position = (await Long.from_stream(reader)).int
+            """
+            sectionX = long >> 42;
+            sectionY = long << 44 >> 44;
+            sectionZ = long << 22 >> 42;
+            """
             x = (raw_chunk_position >> 42) & 0x3FFFFF
             y = raw_chunk_position & 0xFFFFF
             z = (raw_chunk_position >> 20) & 0x3FFFFF
@@ -2045,7 +2050,9 @@ class UpdateSectionBlocksResponse(InboundEvent):
         chunk_position = await UpdateSectionBlocksResponse.ChunkPosition.from_stream(reader)
         blocks_count = await VarInt.from_stream(reader)
         blocks = await Array[UpdateSectionBlocksResponse.Block].from_stream(
-            reader, blocks_count.int, UpdateSectionBlocksResponse.Block
+            reader,
+            blocks_count.int,
+            UpdateSectionBlocksResponse.Block,
         )
         return cls(
             chunk_position=chunk_position,
@@ -2092,16 +2099,16 @@ class UpdateBlockResponse(InboundEvent):
     def __init__(
         self,
         location: Position,
-        block_id: VarInt,
+        state_id: VarInt,
     ) -> None:
         self.location = location
-        self.block_id = block_id
+        self.state_id = state_id
 
     @classmethod
     async def from_stream(cls, reader: SocketReader) -> 'UpdateBlockResponse':
         return cls(
             location=await Position.from_stream(reader),
-            block_id=await VarInt.from_stream(reader),
+            state_id=await VarInt.from_stream(reader),
         )
 
 

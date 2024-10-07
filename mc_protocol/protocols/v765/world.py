@@ -2,15 +2,16 @@ import functools
 import math
 import time
 from enum import Enum
+from typing import NamedTuple
 
-from mc_protocol import DEBUG_GAME_EVENTS, DEBUG_PROTOCOL
+from mc_protocol import DEBUG_PROTOCOL
 from mc_protocol.client import Client
 from mc_protocol.dispatcher import EventDispatcher
 from mc_protocol.mc_types import Array, Float, Int, Long, Short, UByte, VarInt
 from mc_protocol.mc_types.base import AsyncBytesIO, MCType, SocketReader, Vector3
 from mc_protocol.protocols.base import InteractionModule
 from mc_protocol.protocols.utils import get_logger
-from mc_protocol.protocols.v765.constants import BIOMES, BLOCKS, DIMENSIONS
+from mc_protocol.protocols.v765.constants import BIOMES, BLOCK_COLLISION_SHAPES, BLOCKS, DIMENSIONS
 from mc_protocol.protocols.v765.inbound.play import (
     BlockEntityDataResponse,
     ChunkBatchFinishedResponse,
@@ -18,12 +19,11 @@ from mc_protocol.protocols.v765.inbound.play import (
     ChunkDataAndLightResponse,
     LoginResponse,
     RespawnResponse,
+    UnloadChunkResponse,
     UpdateBlockResponse,
     UpdateSectionBlocksResponse,
 )
 from mc_protocol.protocols.v765.outbound.play import ChunkBatchReceivedRequest
-
-DEBUG_PROTOCOL = DEBUG_GAME_EVENTS
 
 
 class PalettedContainer(MCType):
@@ -76,6 +76,9 @@ class PalettedContainer(MCType):
         return self.MAX_BITS_PER_BIOME
 
     def set_masked_value(self, block_index: int, palette_index: int):
+        if self.palette_type == self.PaletteType.DIRECT:
+            self.bitset_mask[block_index] = palette_index
+            return
         start_long_index = math.floor(block_index / self.values_per_long)
         index_in_long = (block_index - start_long_index * self.values_per_long) * self.bits_per_entry
         if index_in_long >= 32:
@@ -122,6 +125,18 @@ class PalettedContainer(MCType):
             return self.palette[self.get_unmasked_palette_index(index)].int
         except IndexError:
             return None
+
+    def convert_to_direct_palette(self) -> 'PalettedContainer':
+        if self.palette_type == self.PaletteType.DIRECT:
+            return self
+        new_bitset_mask = {}
+        for i in self.bitset_mask:
+            new_bitset_mask[i] = self.get_unmasked_palette_index(i)
+
+        self.palette = Array()
+        self.bitset_mask = new_bitset_mask
+        self.palette_type = self.PaletteType.DIRECT
+        return self
 
     @classmethod
     async def read_bitset_mask(cls, reader: SocketReader) -> dict[int, int]:
@@ -170,6 +185,106 @@ class PalettedContainer(MCType):
             pallete,
             await cls.read_bitset_mask(reader),
         )
+
+
+class Block:
+    BlockState = NamedTuple('BlockState', [('name', str), ('type', str), ('num_values', int), ('values', list[str])])
+
+    def __init__(
+        self,
+        state_id: int,
+        block_id: int,
+        name: str,
+        display_name: str,
+        hardness: float,
+        resistance: float,
+        stack_size: int,
+        diggable: bool,
+        material: str,
+        transparent: bool,
+        emit_light: int,
+        filter_light: int,
+        default_state: int,
+        min_state_id: int,
+        max_state_id: int,
+        states: list['Block.BlockState'],
+        drops: list[int],
+        harvest_tools: list[str],
+        bounding_box: str,
+    ):
+        self.state_id = state_id
+        self.block_id = block_id
+        self.name = name
+        self.display_name = display_name
+        self.hardness = hardness
+        self.resistance = resistance
+        self.stack_size = stack_size
+        self.diggable = diggable
+        self.material = material
+        self.transparent = transparent
+        self.emit_light = emit_light
+        self.filter_light = filter_light
+        self.default_state = default_state
+        self.min_state_id = min_state_id
+        self.max_state_id = max_state_id
+        self.states = states
+        self.drops = drops
+        self.harvest_tools = harvest_tools
+        self.bounding_box = bounding_box
+        self.position: Vector3 | None = None
+
+    def get_shapes(self) -> list[list[int]]:
+        shape_ids = BLOCK_COLLISION_SHAPES['blocks'].get(self.name)
+        if not shape_ids:
+            # if no shapes are present for this block (for example, some chemistry stuff we don't have BBs for), assume it's stone
+            return BLOCK_COLLISION_SHAPES['shapes'][str(BLOCK_COLLISION_SHAPES['blocks']['stone'])]
+        if not isinstance(shape_ids, list):
+            return BLOCK_COLLISION_SHAPES['shapes'][str(shape_ids)]
+        return [BLOCK_COLLISION_SHAPES['shapes'][str(shape_id)] for shape_id in shape_ids]
+
+    @classmethod
+    def from_state_id(cls, state_id: int) -> 'Block | None':
+        for block in BLOCKS:
+            if block['minStateId'] <= state_id <= block['maxStateId']:
+                states = []
+                for state in block['states']:
+                    values = state.get('values', [])
+                    states.append(
+                        cls.BlockState(
+                            name=state['name'],
+                            type=state['type'],
+                            num_values=state['num_values'],
+                            values=values,
+                        ),
+                    )
+                return cls(
+                    state_id=state_id,
+                    block_id=block['id'],
+                    name=block['name'],
+                    display_name=block['displayName'],
+                    hardness=block['hardness'],
+                    resistance=block['resistance'],
+                    stack_size=block['stackSize'],
+                    diggable=block['diggable'],
+                    material=block['material'],
+                    transparent=block['transparent'],
+                    emit_light=block['emitLight'],
+                    filter_light=block['filterLight'],
+                    default_state=block['defaultState'],
+                    min_state_id=block['minStateId'],
+                    max_state_id=block['maxStateId'],
+                    states=states,
+                    drops=block['drops'],
+                    harvest_tools=block.get('harvestTools', {}).keys(),
+                    bounding_box=block['boundingBox'],
+                )
+        return None
+
+    def __repr__(self):
+        return f'<Block {self.name} {self.state_id=}>'
+
+    def get_state(self, name: str) -> dict[str, str | int]:
+        return next(iter([state for state in self.states if state.name == name]), {})
 
 
 class ChunkSection(MCType):
@@ -221,7 +336,7 @@ class Chunk:
 
     def set_block_at(self, position: Vector3, state_id: int):
         position_in_chunk = self.get_position_in_chunk(position)
-        old_block, old_state_id = self.get_block_at(position)
+        old_block = self.get_block_at(position)
         try:
             section = self.chunk_sections[(int(position_in_chunk.y) - self.min_y) >> 4]
         except IndexError:
@@ -233,15 +348,16 @@ class Chunk:
 
         section_y = (int(position_in_chunk.y) - self.min_y) & 0xF
         block_index = (section_y << 8) | (int(position_in_chunk.z) << 4) | int(position_in_chunk.x)
-        if old_state_id is not None and old_state_id == 0 and state_id != 0:
+        if old_block is not None and old_block.state_id == 0 and state_id != 0:
             section.solid_block_count += 1
-        elif old_state_id is not None and old_state_id != 0 and state_id == 0:
+        elif old_block is not None and old_block.state_id != 0 and state_id == 0:
             section.solid_block_count -= 1
 
         palette = section.block_states.palette
-        palette_index = next(iter([idx for idx, palette in enumerate(palette) if palette.int == state_id]))
+        palette_index = next(iter([idx for idx, palette in enumerate(palette) if palette.int == state_id]), None)
         if palette_index is None:
             self.logger.log(DEBUG_PROTOCOL, f'State ID {state_id} not found in the palette. Adding it')
+            palette_index = len(palette)
             palette.append(VarInt(state_id))
             new_palette_index = len(palette) - 1
             bits_per_entry = new_palette_index.bit_length()
@@ -249,11 +365,11 @@ class Chunk:
                 bits_per_entry > section.block_states.bits_per_entry
                 and bits_per_entry > section.block_states.max_bits_per_entry
             ):
-                # TODO: Implement this. Need to create DirectPalette and set it
-                raise ValueError('Palette is full. And create new palette not implemented!')
+                section.block_states.convert_to_direct_palette().set_masked_value(block_index, new_palette_index)
+                return
         section.block_states.set_masked_value(block_index, palette_index)
 
-    def get_block_at(self, position: Vector3):
+    def get_block_at(self, position: Vector3) -> Block | None:
         chunk_section_position = self.get_position_in_chunk(position)
         chunk_section_index = (int(chunk_section_position.y) - self.min_y) >> 4
         try:
@@ -268,9 +384,10 @@ class Chunk:
         if block_state_id is None:
             return None
 
-        for block in BLOCKS:
-            if block['minStateId'] <= block_state_id <= block['maxStateId']:
-                return block, block_state_id  # TODO: Create Block class
+        # # TODO: Stupid way to get block at position, need to refactor this
+        block = Block.from_state_id(block_state_id)
+        block.position = position
+        return block
 
 
 class World(InteractionModule):
@@ -288,14 +405,13 @@ class World(InteractionModule):
         self.height = 256
         self.chunks: dict[tuple[int, int], Chunk] = {}
 
-    def get_block_at(self, position: Vector3):
+    def get_block_at(self, position: Vector3) -> Block | None:
         self.logger.log(DEBUG_PROTOCOL, f'Getting block at position: {position}')
         chunk = self.get_chunk_at(position.x, position.z)
         if chunk is None:
             return None
         return chunk.get_block_at(position)
 
-    #
     def get_chunk_at(self, x: float, z: float) -> Chunk | None:
         chunk_key = math.floor(x / 16), math.floor(z / 16)
         return self.chunks.get(chunk_key)
@@ -366,9 +482,24 @@ class World(InteractionModule):
 
     @EventDispatcher.subscribe(UpdateBlockResponse)
     async def _update_block(self, data: UpdateBlockResponse):
-        """
-        TODO: Implement it. Position is not correct need to fix it also
-        """
+        chunk = self.get_chunk_at(data.location.x, data.location.z)
+        if not chunk:
+            self.logger.log(DEBUG_PROTOCOL, 'Chunk not found')
+        position = Vector3(
+            x=data.location.x,
+            y=data.location.y,
+            z=data.location.z,
+        )
+        chunk.set_block_at(position, data.state_id.int)
+
+    @EventDispatcher.subscribe(UnloadChunkResponse)
+    async def _unload_chunk(self, data: UnloadChunkResponse):
+        removed_chunk = self.chunks.pop((data.chunk_x.int, data.chunk_z.int), None)
+        if removed_chunk:
+            self.logger.log(
+                DEBUG_PROTOCOL,
+                f'Chunk at x={data.chunk_x} z={data.chunk_z} unloaded',
+            )
 
     @EventDispatcher.subscribe(BlockEntityDataResponse)
     async def _block_entity(self, data: BlockEntityDataResponse):

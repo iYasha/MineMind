@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from mc_protocol.mc_types.base import MCType, SocketReader
 from mc_protocol.mc_types.int import Long
@@ -15,6 +15,12 @@ class Array(list[T], MCType):
         for _ in range(length):
             instance.append(await mc_type.from_stream(reader, **type_params))
         return instance
+
+    def get(self, index: int, default: Any = None) -> T | None:
+        try:
+            return self[index]
+        except IndexError:
+            return default
 
 
 class BitSet(Array[Long]):

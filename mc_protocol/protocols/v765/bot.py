@@ -63,10 +63,10 @@ class Bot(InteractionModule):
         self.uuid: uuid.UUID | None = None
         self.entity_id: int | None = None
 
+        self.world = World(client)
         self.entities = Entities(client)
         self.physics = Physics(client, self)
         self.game = Game(client)
-        self.world = World(client)
 
         # TODO: 0x25 Work with (Chunk Data and Update Light) - Looks like it's return block entities
         # self.inventory = Inventory(self.player)
@@ -247,16 +247,6 @@ class Bot(InteractionModule):
 
     @EventDispatcher.subscribe(DamageEventResponse)
     async def _on_damage(self, data: DamageEventResponse):
-        # self.world.get_block_at(self.entity.position)
-        print(
-            self.world.get_block_at(
-                Vector3(
-                    40.700,
-                    68,
-                    -528.300,
-                ),
-            ),
-        )
         if data.entity_id.int == self.entity_id:
             self.logger.log(
                 DEBUG_GAME_EVENTS,

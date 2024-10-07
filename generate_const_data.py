@@ -8,6 +8,7 @@ base_url = (
 )
 # Need https://raw.githubusercontent.com/PrismarineJS/minecraft-data/refs/heads/master/data/pc/1.20.3/blocks.json
 # https://github.com/PrismarineJS/minecraft-data/blob/master/data/pc/1.20.2/biomes.json
+# https://raw.githubusercontent.com/PrismarineJS/minecraft-data/refs/heads/master/data/pc/1.20.3/blockCollisionShapes.json
 version_url = f'{base_url}/version.json'
 entities_url = f'{base_url}/entities.json'
 
