@@ -39,6 +39,9 @@ class AABB:
         self.max_y = max_y
         self.max_z = max_z
 
+    def __repr__(self):
+        return f'<AABB {self.min_x=} {self.min_y=} {self.min_z=} {self.max_x=} {self.max_y=} {self.max_z=}>'
+
     def copy(self) -> 'AABB':
         return AABB(self.min_x, self.min_y, self.min_z, self.max_x, self.max_y, self.max_z)
 
@@ -154,6 +157,7 @@ def time_ms() -> int:
 
 class PlayerPhysicsSimulation:
     GRAVITY = 0.08
+    SLOW_FALLING = 0.125
     AIRDRAG = 0.9800000190734863  # math.fround(1 - 0.02)
     PLAYER_HALF_WIDTH = 0.3
     PLAYER_HEIGHT = 1.8
@@ -168,6 +172,7 @@ class PlayerPhysicsSimulation:
     LAVA_INERTIA = 0.5
     LAVA_GRAVITY = 0.02
 
+    DEFAULT_SLIPPERINESS = 0.6
     AIRBORNE_INERTIA = 0.91
     AIRBORNE_ACCELERATION = 0.02
 
@@ -219,6 +224,7 @@ class PlayerPhysicsSimulation:
         self.slow_falling = 0
         self.depth_strider = 0
         self.levitation = 0
+        self.dolphins_grace = 0
 
     @classmethod
     def get_player_bb(cls, position: Vector3) -> AABB:
@@ -252,7 +258,7 @@ class PlayerPhysicsSimulation:
             return -1
         if block.block_id in WATER_LIKE_BLOCK_IDS:
             return 0
-        if block.get_state('waterlogged') is not None:
+        if bool(block.get_state('waterlogged')):
             return 0
         if block.block_id != WATER_BLOCK_ID:
             return -1
@@ -273,7 +279,7 @@ class PlayerPhysicsSimulation:
                     if block is not None and (
                         WATER_BLOCK_ID == block.block_id
                         or block.block_id in WATER_LIKE_BLOCK_IDS
-                        or block.get_state('waterlogged') is not None
+                        or bool(block.get_state('waterlogged'))
                     ):
                         water_level = y + 1 - self.get_liquid_height_percentage(block)
                         if math.ceil(water_bb.max_y) >= water_level:
@@ -286,14 +292,15 @@ class PlayerPhysicsSimulation:
         for dx, dz in [[0, 1], [-1, 0], [0, -1], [1, 0]]:
             adjust_block = self.world.get_block_at(block.position.offset(dx, 0, dz))
             adjust_level = self.get_rendered_depth(adjust_block)
-            if adjust_level < 0 and adjust_block is not None and adjust_block.bounding_box != 'empty':
-                adjust_level = self.get_rendered_depth(
-                    self.world.get_block_at(block.position.offset(dx, -1, dz)),
-                )
-                if adjust_level >= 0:
-                    flow_multiplier = adjust_level - (current_level - 8)
-                    flow.x += dx * flow_multiplier
-                    flow.z += dz * flow_multiplier
+            if adjust_level < 0:
+                if adjust_block is not None and adjust_block.bounding_box != 'empty':
+                    adjust_level = self.get_rendered_depth(
+                        self.world.get_block_at(block.position.offset(dx, -1, dz)),
+                    )
+                    if adjust_level >= 0:
+                        flow_multiplier = adjust_level - (current_level - 8)
+                        flow.x += dx * flow_multiplier
+                        flow.z += dz * flow_multiplier
             else:
                 flow_multiplier = adjust_level - current_level
                 flow.x += dx * flow_multiplier
@@ -460,7 +467,7 @@ class PlayerPhysicsSimulation:
         if dz != old_vel_z:
             self.velocity.z = 0
         if dy != old_vel_y:
-            if block_at_feet and block_at_feet.block_id == SLIME_BLOCK_ID and False:  # TODO: If not sneaking
+            if block_at_feet and block_at_feet.block_id == SLIME_BLOCK_ID and True:  # TODO: If not sneaking
                 self.velocity.y = -self.velocity.y
             else:
                 self.velocity.y = 0
@@ -512,7 +519,7 @@ class PlayerPhysicsSimulation:
         )
 
     def move_entity_with_heading(self, strafe: float, forward: float):
-        gravity_multiplier = self.slow_falling if (self.velocity.y <= 0 and self.slow_falling > 0) else 1
+        gravity_multiplier = self.SLOW_FALLING if (self.velocity.y <= 0 < self.slow_falling) else 1
 
         if self.is_in_water or self.is_in_lava:
             last_y = self.position.y
@@ -527,6 +534,7 @@ class PlayerPhysicsSimulation:
                 if strider > 0:
                     horizontal_inertia += (0.546 - horizontal_inertia) * strider / 3
                     acceleration += (0.07 - acceleration) * strider / 3
+                if self.dolphins_grace > 0: horizontal_inertia = 0.96
 
             self.apply_heading(strafe, forward, acceleration)
             self.move_entity()
@@ -549,6 +557,11 @@ class PlayerPhysicsSimulation:
             block_under = self.world.get_block_at(self.position.offset(0, -1, 0))
             if self.on_ground and block_under:
                 """TODO: Implement movement on ground"""
+                attribute_speed = 0.1
+                # inertia = (blockSlipperiness[blockUnder.type] or physics.defaultSlipperiness) * 0.91
+                inertia = self.DEFAULT_SLIPPERINESS * 0.91
+                acceleration = attribute_speed * (0.1627714 / (inertia ** 3))
+                if acceleration < 0: acceleration = 0
             else:
                 acceleration = self.AIRBORNE_ACCELERATION
                 inertia = self.AIRBORNE_INERTIA
@@ -635,7 +648,6 @@ class Physics(InteractionModule):
             is_collided_vertically=self.is_collided_vertically,
         )
         simulation.simulate()
-        print('SIMULATED')
         self.bot.entity.position = simulation.position
         self.bot.entity.velocity = simulation.velocity
         self.bot.entity.yaw = simulation.yaw
@@ -654,7 +666,7 @@ class Physics(InteractionModule):
                 on_ground=Boolean(simulation.on_ground),
             ),
         )
-        self.logger.log(DEBUG_GAME_EVENTS, f'Physics moved player to {simulation.position=}')
+        # self.logger.log(DEBUG_GAME_EVENTS, f'Physics moved player to {simulation.position=}')
 
     async def timer(self):
         while True:

@@ -7,7 +7,7 @@ from typing import NamedTuple
 from mc_protocol import DEBUG_PROTOCOL
 from mc_protocol.client import Client
 from mc_protocol.dispatcher import EventDispatcher
-from mc_protocol.mc_types import Array, Float, Int, Long, Short, UByte, VarInt
+from mc_protocol.mc_types import Array, Float, Long, Short, UByte, VarInt, UInt
 from mc_protocol.mc_types.base import AsyncBytesIO, MCType, SocketReader, Vector3
 from mc_protocol.protocols.base import InteractionModule
 from mc_protocol.protocols.utils import get_logger
@@ -144,8 +144,8 @@ class PalettedContainer(MCType):
         bitset_mask = {}
 
         for i in range(0, bitset_len, 2):
-            bitset_mask[i + 1] = (await Int.from_stream(reader)).int
-            bitset_mask[i] = (await Int.from_stream(reader)).int
+            bitset_mask[i + 1] = (await UInt.from_stream(reader)).int
+            bitset_mask[i] = (await UInt.from_stream(reader)).int
         return bitset_mask
 
     @classmethod
@@ -235,7 +235,7 @@ class Block:
 
     def get_shapes(self) -> list[list[int]]:
         shape_ids = BLOCK_COLLISION_SHAPES['blocks'].get(self.name)
-        if not shape_ids:
+        if shape_ids is None:
             # if no shapes are present for this block (for example, some chemistry stuff we don't have BBs for), assume it's stone
             return BLOCK_COLLISION_SHAPES['shapes'][str(BLOCK_COLLISION_SHAPES['blocks']['stone'])]
         if not isinstance(shape_ids, list):
@@ -386,7 +386,7 @@ class Chunk:
 
         # # TODO: Stupid way to get block at position, need to refactor this
         block = Block.from_state_id(block_state_id)
-        block.position = position
+        block.position = position.floored()
         return block
 
 

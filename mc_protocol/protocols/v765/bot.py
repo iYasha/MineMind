@@ -252,7 +252,8 @@ class Bot(InteractionModule):
                 DEBUG_GAME_EVENTS,
                 f'Bot received damage from {self.entities.get_by_id(data.source_cause_id.int)}',
             )
-            await self.attack(data.source_direct_id)
+            if data.source_cause_id.int != -1:
+                await self.attack(data.source_direct_id)
         else:
             self.logger.log(
                 DEBUG_GAME_EVENTS,
