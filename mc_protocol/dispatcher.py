@@ -10,7 +10,7 @@ from mc_protocol.mc_types import VarInt
 from mc_protocol.mc_types.base import AsyncBytesIO, SocketReader
 from mc_protocol.protocols.enums import ConnectionState
 from mc_protocol.protocols.protocol_events import InboundEvent
-from mc_protocol.protocols.utils import get_logger
+from mc_protocol.protocols.utils import ConnectionClosed, get_logger
 
 if TYPE_CHECKING:
     from mc_protocol.protocols.base import InteractionModule
@@ -91,7 +91,7 @@ class EventDispatcher:
         except Exception as e:
             packet_id = getattr(event, 'packet_id', None)
             self.logger.error(f'Error while invoking callback {callback} for event {packet_id}: {e}')
-            if int(os.getenv('DEBUG', -1)):
+            if int(os.getenv('DEBUG', 1)):
                 raise e
 
     async def submit_event(self, packet_id: VarInt, raw_data: AsyncBytesIO) -> None:
@@ -101,10 +101,14 @@ class EventDispatcher:
             + self._listeners[self.client.state].get('*', [])
         )
         if not listeners:
+            packet_len = len(raw_data.getvalue())
+            raw_value = ''
+            if packet_len < 100:
+                raw_value = f' Raw value: {raw_data.getvalue()!r}'
             self.logger.log(
                 DEBUG_TRACE,
                 f'[State={self.client.state}] Received packet {packet_id.hex} but no listeners are registered. '
-                f'Packet len: {len(await raw_data.read(-1))}',
+                f'Packet len: {packet_len} bytes.{raw_value}',
             )
             return
 
@@ -141,7 +145,11 @@ class EventDispatcher:
 
     async def run_forever(self):
         while True:
-            packet_id, raw_data = await self.client.unpack_packet(self.client.reader)
+            try:
+                packet_id, raw_data = await self.client.unpack_packet(self.client.reader)
+            except ConnectionClosed:
+                self.logger.log(DEBUG_TRACE, 'Connection closed')
+                break
             event = self.submit_event(packet_id, raw_data)
 
             is_bundle_delimiter = self.client.state == ConnectionState.PLAY and packet_id.int == 0

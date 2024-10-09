@@ -13,7 +13,7 @@ from mc_protocol.protocols.utils import get_logger
 class Client:
     logger = get_logger('Client')
 
-    def __init__(self, host: str = '127.0.0.1', port: int = 25565, protocol_version: int = 767):
+    def __init__(self, host: str = 'localhost', port: int = 25565, protocol_version: int = 765):
         self.host = host
         self.port = port
         self.protocol_version = protocol_version
@@ -25,15 +25,21 @@ class Client:
         self.threshold: int | None = None
         self.state = ConnectionState.HANDSHAKING
 
-    async def __aenter__(self):
+    async def connect(self) -> None:
         self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
         self.logger.log(DEBUG_TRACE, f'Connected to {self.host}:{self.port}')
+
+    async def disconnect(self) -> None:
+        self.writer.close()
+        await self.writer.wait_closed()
+        self.logger.log(DEBUG_TRACE, f'Disconnected from {self.host}:{self.port}')
+
+    async def __aenter__(self):
+        await self.connect()
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        self.logger.log(DEBUG_TRACE, f'Disconnected from {self.host}:{self.port}')
-        self.writer.close()
-        await self.writer.wait_closed()
+        await self.disconnect()
 
     async def send_packet(self, event: OutboundEvent) -> None:
         # https://wiki.vg/Protocol#Packet_format
@@ -55,7 +61,10 @@ class Client:
 
         self.writer.write(packet)
         await self.writer.drain()
-        self.logger.log(DEBUG_TRACE, f'Sent packet {event.packet_id} with {buffer_len} bytes')
+        self.logger.log(
+            DEBUG_TRACE,
+            f'Sent packet {hex(event.packet_id)} ({event.__class__.__name__}) with {buffer_len} bytes',
+        )
 
     async def unpack_packet(self, reader: StreamReader) -> tuple[VarInt, AsyncBytesIO]:
         total_packet_length = await VarInt.from_stream(reader)

@@ -1,6 +1,7 @@
 from typing import Tuple
 
 from mc_protocol.mc_types.base import MCType, SocketReader
+from mc_protocol.protocols.utils import ConnectionClosed
 
 
 class VarNum(MCType):
@@ -24,7 +25,7 @@ class VarNum(MCType):
         while True:
             byte = await reader.read(1)
             if not byte:
-                raise IOError("Connection closed unexpectedly")
+                raise ConnectionClosed("Connection closed")
             value = byte[0]
             result |= (value & 0x7F) << (7 * num_read)
 

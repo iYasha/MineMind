@@ -23,11 +23,7 @@ from mc_protocol.protocols.v765.inbound.play import (
     KeepAliveResponse,
     LoginResponse,
     PositionResponse,
-    SetDefaultSpawnPositionResponse,
-    SetTickingStateResponse,
-    StepTickResponse,
     UpdateHealthResponse,
-    UpdateTimeResponse,
 )
 from mc_protocol.protocols.v765.outbound.login import LoginAcknowledgedRequest, LoginStartRequest
 from mc_protocol.protocols.v765.outbound.play import (
@@ -52,22 +48,41 @@ class OfflinePlayerNamespace:
 class Bot(InteractionModule):
     logger = get_logger('Bot')
 
-    def __init__(self, client: Client):
-        self.client = client
-        self.configuration = None
+    def __init__(self, username: str = 'Bot', host: str = 'localhost', port: int = 25565, protocol_version: int = 765):
+        self.client = Client(host, port, protocol_version)
+        self.configuration = Configuration(self.client)
 
-        self.username: str | None = None
-        self.uuid: uuid.UUID | None = None
+        self.username: str = username
+
+        # TODO: Argument 1 to "uuid3" has incompatible type "type[OfflinePlayerNamespace]"; expected "UUID"  [arg-type]
+        self.uuid: uuid.UUID = uuid.uuid3(OfflinePlayerNamespace, username)  # type: ignore[arg-type]
         self.entity_id: int | None = None
 
-        self.world = World(client)
-        self.entities = Entities(client)
-        self.physics = Physics(client, self)
-        self.game = Game(client)
+        self.dispatcher = EventDispatcher(self.client)
 
-        # TODO: 0x25 Work with (Chunk Data and Update Light) - Looks like it's return block entities
-        # self.inventory = Inventory(self.player)
-        # self.pvp = PVP(self.player)
+        self.world = World(self.client)
+        self.entities = Entities(self.client)
+        self.physics = Physics(self.client, self)
+        self.game = Game(self.client)
+
+    async def run_forever(self):
+        async with self:
+            try:
+                while True:
+                    await asyncio.sleep(1)
+            except (KeyboardInterrupt, asyncio.CancelledError):
+                self.logger.log(DEBUG_GAME_EVENTS, 'Bot stopped')
+
+    async def __aenter__(self):
+        await self.client.connect()
+        self._dispatcher_task = asyncio.create_task(self.dispatcher.run_forever())
+        await self.login()
+        async with self.spawned():
+            return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.client.disconnect()
+        await self._dispatcher_task
 
     @property
     def entity(self) -> Player | None:
@@ -75,20 +90,14 @@ class Bot(InteractionModule):
             return None
         return self.entities.get_by_id(self.entity_id)  # type: ignore[return-value]
 
-    async def login(self, username: str) -> None:
+    async def login(self) -> None:
         # TODO: currently only supports offline mode
         await handshake(self.client, HandshakingNextState.LOGIN)
 
-        # TODO: Argument 1 to "uuid3" has incompatible type "type[OfflinePlayerNamespace]"; expected "UUID"  [arg-type]
-        user_uuid = UUID(uuid.uuid3(OfflinePlayerNamespace, username))  # type: ignore[arg-type]
-        self.uuid = user_uuid.uuid
-        self.username = username
-
-        request = LoginStartRequest(String(username), user_uuid)
+        request = LoginStartRequest(String(self.username), UUID(self.uuid))
         await self.client.send_packet(request)
 
     async def login_acknowledged(self):
-        self.configuration = Configuration(self.client)
         await self.client.send_packet(LoginAcknowledgedRequest())
         self.client.state = ConnectionState.CONFIGURATION
 
@@ -101,22 +110,6 @@ class Bot(InteractionModule):
     async def _set_threshold(self, data: CompressResponse):
         self.logger.log(DEBUG_PROTOCOL, f'Compression activated. Threshold set to {data.threshold.int}')
         self.client.threshold = data.threshold.int
-
-    @EventDispatcher.subscribe(UpdateTimeResponse)
-    async def _game_tick(self, data: UpdateTimeResponse):
-        pass
-
-    @EventDispatcher.subscribe(SetDefaultSpawnPositionResponse)
-    async def _set_default_spawn_position(self, data: SetDefaultSpawnPositionResponse):
-        pass
-
-    @EventDispatcher.subscribe(SetTickingStateResponse)
-    async def _set_ticking_state(self, data: SetTickingStateResponse):
-        pass
-
-    @EventDispatcher.subscribe(StepTickResponse)
-    async def _step_tick(self, data: StepTickResponse):
-        pass
 
     async def respawn(self):
         await self.client.send_packet(ClientCommandRequest(VarInt(0x00)))  # Perform respawn
