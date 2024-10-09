@@ -3,7 +3,7 @@ import math
 import time
 import typing
 
-from mc_protocol import DEBUG_GAME_EVENTS
+from mc_protocol import DEBUG_PROTOCOL
 from mc_protocol.client import Client
 from mc_protocol.dispatcher import EventDispatcher
 from mc_protocol.mc_types import Boolean, Double
@@ -156,6 +156,7 @@ def time_ms() -> int:
 
 
 class PlayerPhysicsSimulation:
+    logger = get_logger('PlayerPhysicsSimulation')
     GRAVITY = 0.08
     SLOW_FALLING = 0.125
     AIRDRAG = 0.9800000190734863  # math.fround(1 - 0.02)
@@ -242,7 +243,11 @@ class PlayerPhysicsSimulation:
             for z in range(math.floor(query_bb.min_z), math.floor(query_bb.max_z) + 1):
                 for x in range(math.floor(query_bb.min_x), math.floor(query_bb.max_x) + 1):
                     block = self.world.get_block_at(Vector3(x, y, z))
-                    if not block:
+                    if block is None:
+                        self.logger.log(DEBUG_PROTOCOL, 'Block is not set')
+                        continue
+                    if block.position is None:
+                        self.logger.log(DEBUG_PROTOCOL, 'Block position is not set')
                         continue
                     for shape in block.get_shapes():
                         surrounding_bbs.append(
@@ -289,6 +294,8 @@ class PlayerPhysicsSimulation:
     def get_water_flow(self, block: Block) -> Vector3:
         current_level = self.get_rendered_depth(block)
         flow = Vector3(0, 0, 0)
+        if block.position is None:
+            raise ValueError('Block position is not set')
         for dx, dz in [[0, 1], [-1, 0], [0, -1], [1, 0]]:
             adjust_block = self.world.get_block_at(block.position.offset(dx, 0, dz))
             adjust_level = self.get_rendered_depth(adjust_block)
@@ -528,13 +535,14 @@ class PlayerPhysicsSimulation:
             horizontal_inertia = inertia
 
             if self.is_in_water:
-                strider = min(self.depth_strider, 3)
+                strider = float(min(self.depth_strider, 3))
                 if not self.on_ground:
                     strider *= 0.5
                 if strider > 0:
                     horizontal_inertia += (0.546 - horizontal_inertia) * strider / 3
                     acceleration += (0.07 - acceleration) * strider / 3
-                if self.dolphins_grace > 0: horizontal_inertia = 0.96
+                if self.dolphins_grace > 0:
+                    horizontal_inertia = 0.96
 
             self.apply_heading(strafe, forward, acceleration)
             self.move_entity()
@@ -545,7 +553,9 @@ class PlayerPhysicsSimulation:
 
             if self.is_collided_horizontally and self.does_not_collide(
                 self.position.offset(
-                    self.velocity.x, self.velocity.y + 0.6 - self.position.y + last_y, self.velocity.z
+                    self.velocity.x,
+                    self.velocity.y + 0.6 - self.position.y + last_y,
+                    self.velocity.z,
                 ),
             ):
                 self.velocity.y = self.OUT_OF_LIQUID_IMPULSE
@@ -560,8 +570,9 @@ class PlayerPhysicsSimulation:
                 attribute_speed = 0.1
                 # inertia = (blockSlipperiness[blockUnder.type] or physics.defaultSlipperiness) * 0.91
                 inertia = self.DEFAULT_SLIPPERINESS * 0.91
-                acceleration = attribute_speed * (0.1627714 / (inertia ** 3))
-                if acceleration < 0: acceleration = 0
+                acceleration = attribute_speed * (0.1627714 / (inertia**3))
+                if acceleration < 0:
+                    acceleration = 0
             else:
                 acceleration = self.AIRBORNE_ACCELERATION
                 inertia = self.AIRBORNE_INERTIA
@@ -630,8 +641,11 @@ class Physics(InteractionModule):
             self.timer_task.cancel()
 
     async def on_tick(self, now: int):
+        if self.bot.entity is None:
+            self.logger.log(DEBUG_PROTOCOL, 'Player entity is not set')
+            return
         if self.bot.world.get_block_at(self.bot.entity.position) is None:
-            print('Waiting for chunk to load')
+            self.logger.log(DEBUG_PROTOCOL, 'Waiting for chunk to load')
             return
         simulation = PlayerPhysicsSimulation(
             world=self.bot.world,

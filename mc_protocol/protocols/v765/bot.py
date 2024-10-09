@@ -49,9 +49,6 @@ class OfflinePlayerNamespace:
     bytes = b'OfflinePlayer:'
 
 
-# DEBUG_PROTOCOL = DEBUG_GAME_EVENTS
-
-
 class Bot(InteractionModule):
     logger = get_logger('Bot')
 

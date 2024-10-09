@@ -18,7 +18,7 @@ class VarNum(MCType):
             raise TypeError('Value must be an int or bytes object')
 
     @classmethod
-    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'VarNum':
+    async def from_stream(cls, reader: SocketReader, **kwargs):
         num_read = 0
         result = 0
         while True:

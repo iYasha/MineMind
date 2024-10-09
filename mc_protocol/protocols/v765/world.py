@@ -7,7 +7,7 @@ from typing import NamedTuple
 from mc_protocol import DEBUG_PROTOCOL
 from mc_protocol.client import Client
 from mc_protocol.dispatcher import EventDispatcher
-from mc_protocol.mc_types import Array, Float, Long, Short, UByte, VarInt, UInt
+from mc_protocol.mc_types import Array, Float, Long, Short, UByte, UInt, VarInt
 from mc_protocol.mc_types.base import AsyncBytesIO, MCType, SocketReader, Vector3
 from mc_protocol.protocols.base import InteractionModule
 from mc_protocol.protocols.utils import get_logger
@@ -59,8 +59,12 @@ class PalettedContainer(MCType):
         palette_category: 'PalettedContainer.PaletteCategory',
         bits_per_entry: int,
         palette: Array[Long | VarInt] | None = None,
-        bitset_mask: dict[int, int] = None,
+        bitset_mask: dict[int, int] | None = None,
     ):
+        if bitset_mask is None:
+            bitset_mask = {}
+        if palette is None:
+            palette = Array()
         self.palette_type = palette_type
         self.palette_category = palette_category
         self.bits_per_entry = bits_per_entry
@@ -283,8 +287,8 @@ class Block:
     def __repr__(self):
         return f'<Block {self.name} {self.state_id=}>'
 
-    def get_state(self, name: str) -> dict[str, str | int]:
-        return next(iter([state for state in self.states if state.name == name]), {})
+    def get_state(self, name: str) -> BlockState | None:
+        return next(iter([state for state in self.states if state.name == name]), None)
 
 
 class ChunkSection(MCType):
@@ -386,6 +390,8 @@ class Chunk:
 
         # # TODO: Stupid way to get block at position, need to refactor this
         block = Block.from_state_id(block_state_id)
+        if block is None:
+            return None
         block.position = position.floored()
         return block
 
@@ -397,7 +403,7 @@ class World(InteractionModule):
         self.client = client
 
         self.chunk_batch_start_time = time.time()
-        self.weighted_average = 2
+        self.weighted_average = 2.0
         self.old_sample_weight = 1
 
         self.dimension = 'overworld'
@@ -419,8 +425,8 @@ class World(InteractionModule):
     @EventDispatcher.subscribe(LoginResponse, RespawnResponse)
     async def set_world_parameters(self, event: LoginResponse | RespawnResponse):
         self.dimension = event.dimension_type.str.split(':')[1]
-        self.min_y = DIMENSIONS[self.dimension]['minY']
-        self.height = DIMENSIONS[self.dimension]['height']
+        self.min_y = int(DIMENSIONS[self.dimension]['minY'])  # type: ignore[call-overload]
+        self.height = int(DIMENSIONS[self.dimension]['height'])  # type: ignore[call-overload]
         self.logger.log(
             DEBUG_PROTOCOL,
             f'Set dimension: {self.dimension} | Height: {self.height} | Min Y: {self.min_y}',
@@ -473,8 +479,9 @@ class World(InteractionModule):
             z=data.chunk_position.z,
         ).scale(16)
         chunk = self.get_chunk_at(chunk_position.x, chunk_position.z)
-        if not chunk:
+        if chunk is None:
             self.logger.log(DEBUG_PROTOCOL, 'Chunk not found')
+            return
         for block in data.blocks:
             block_position = chunk_position.offset(block.x, block.y, block.z, inplace=False)
             chunk.set_block_at(block_position, block.state_id)
@@ -483,8 +490,9 @@ class World(InteractionModule):
     @EventDispatcher.subscribe(UpdateBlockResponse)
     async def _update_block(self, data: UpdateBlockResponse):
         chunk = self.get_chunk_at(data.location.x, data.location.z)
-        if not chunk:
+        if chunk is None:
             self.logger.log(DEBUG_PROTOCOL, 'Chunk not found')
+            return
         position = Vector3(
             x=data.location.x,
             y=data.location.y,
