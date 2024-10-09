@@ -64,6 +64,13 @@ if __name__ == '__main__':
 
 ## Documentation
 TBD
+
+### Testing
+To test your bot, you can start simple local server using docker (it's using itzg/minecraft-server image):
+```bash
+docker-compose up
+````
+
 ### Debugging
 Library provides three levels of debugging:
 - [DEBUG=3] DEBUG_GAME_EVENTS: Print game events, like player movement, chat messages, damage received, etc.
