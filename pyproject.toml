@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "mc-protocol"
+name = "minemind"
 version = "0.1.0"
-description = ""
+description = "Low-level API for creating minecraft bots"
 authors = ["iYasha <33287747+iYasha@users.noreply.github.com>"]
 readme = "README.md"
 

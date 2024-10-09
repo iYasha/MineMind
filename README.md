@@ -16,47 +16,57 @@ pip install minemind
 ## Example
 
 Say hello world to the server.
+
 ````python
 import asyncio
-from mc_protocol.protocols.v765.bot import Bot
+from minemind.protocols.v765.bot import Bot
+
 
 async def main():
     async with Bot(username='Steve', host='localhost', port=25565) as bot:
         await bot.chat_message('Hello, world!')
+
 
 if __name__ == '__main__':
     asyncio.run(main())
 ````
 
 React to different events.
+
 ````python
 import asyncio
-from mc_protocol.dispatcher import EventDispatcher
-from mc_protocol.protocols.v765.bot import Bot
-from mc_protocol.protocols.v765.inbound.play import CollectResponse
+from minemind.dispatcher import EventDispatcher
+from minemind.protocols.v765.bot import Bot
+from minemind.protocols.v765.inbound.play import CollectResponse
+
 
 @EventDispatcher.subscribe(CollectResponse)
 async def pickup_item(data: CollectResponse):
     print(f'Bot picked up {data.pickup_item_count} items')
 
+
 async def main():
     await Bot().run_forever()
+
 
 if __name__ == '__main__':
     asyncio.run(main())
 ````
 
 Get server information.
+
 ````python
 import asyncio
 
-from mc_protocol.client import Client
-from mc_protocol.protocols.v765.server import Server
+from minemind.client import Client
+from minemind.protocols.v765.server import Server
+
 
 async def main():
     async with Client(host='localhost', port=25565) as client:
         server = Server(client)
         print(await server.get_info())
+
 
 if __name__ == '__main__':
     asyncio.run(main())

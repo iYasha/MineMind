@@ -83,9 +83,9 @@ def camel_to_snake(class_name: str) -> str:
 
 def generate_outbound_schema(parsed_protocol: list[dict]):
     def module_factory() -> str:
-        return """from mc_protocol.states.enums import ConnectionState
-from mc_protocol.states.events import OutboundEvent
-from mc_protocol.mc_types import *
+        return """from minemind.states.enums import ConnectionState
+from minemind.states.events import OutboundEvent
+from minemind.mc_types import *
 
         """
 
@@ -161,9 +161,9 @@ class {class_name}(OutboundEvent):
 
 def generate_inbound_schema(parsed_protocol: list[dict]):
     def module_factory():
-        return """from mc_protocol.states.enums import ConnectionState
-from mc_protocol.states.events import InboundEvent
-from mc_protocol.mc_types import *
+        return """from minemind.states.enums import ConnectionState
+from minemind.states.events import InboundEvent
+from minemind.mc_types import *
 
             """
 
@@ -244,14 +244,14 @@ pc = get_protocol()
 outbound_schema = generate_outbound_schema(pc)
 inbound_schema = generate_inbound_schema(pc)
 
-version_path = f'mc_protocol/protocols/v{version["version"]}'
+version_path = f'minemind/protocols/v{version["version"]}'
 os.makedirs(f'{version_path}/outbound', exist_ok=True)
 os.makedirs(f'{version_path}/inbound', exist_ok=True)
 
 open(f'{version_path}/outbound/__init__.py', 'w').write('')
 open(f'{version_path}/inbound/__init__.py', 'w').write('')
 open(f'{version_path}/__init__.py', 'w').write('')
-open('mc_protocol/protocols/__init__.py', 'w').write('')
+open('minemind/protocols/__init__.py', 'w').write('')
 for module in outbound_schema.keys():
     open(f'{version_path}/outbound/{module}.py', 'w').write(outbound_schema[module])
 
