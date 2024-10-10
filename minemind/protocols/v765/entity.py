@@ -361,11 +361,6 @@ class Entities(InteractionModule):
             self.logger.log(DEBUG_PROTOCOL, f'Entity {data.entity_id.int} moved, but not found in the list')
             return
 
-        # hack to check block under player
-        # if isinstance(entity, Player) and entity.username == 'iYasha':
-        #     pos = entity.position.offset(0, -1, 0)
-        #     print(EventDispatcher._callback_instances['World'].get_block_at(pos))
-
         entity.set_position_from_delta(data.dx.int, data.dy.int, data.dz.int)
         entity.on_ground = data.on_ground.bool
 

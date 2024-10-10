@@ -513,4 +513,5 @@ class World(InteractionModule):
 
     @EventDispatcher.subscribe(BlockEntityDataResponse)
     async def _block_entity(self, data: BlockEntityDataResponse):
-        print(data)
+        # TODO: Parse and save block entity
+        pass

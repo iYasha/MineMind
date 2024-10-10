@@ -1,10 +1,11 @@
 # MineMind
 
-Low-level API for creating minecraft bots.
+Low-level API for creating Minecraft bots. Aiming to be the best library for Machine Learning purposes.
 
 
 ## Supported Versions
 
+- 1.20.4
 - 1.20.3
 
 ## Installation
@@ -95,13 +96,14 @@ DEBUG=2 python my_script.py
 ## Roadmap
 
 - [x] Physics engine
+- [ ] All authentication methods support
 - [ ] Bot movement
 - [ ] Elytra flight
 - [ ] Combat system
 - [ ] Mining
 - [ ] Inventory management
 - [ ] Item interaction (e.g. bed, crafting table, etc.)
-- [ ] Implement crafting
+- [ ] Crafting
 - [ ] Pathfinding
 - [ ] Fishing
 - [ ] Documentation

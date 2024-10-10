@@ -1156,6 +1156,94 @@ class SetDefaultSpawnPositionResponse(InboundEvent):
         )
 
 
+class Slot(MCType):
+
+    def __init__(
+        self,
+        present: Boolean,
+        item_id: VarInt | None = None,
+        item_count: Byte | None = None,
+        nbt_data: nbt.Compound | None = None,
+    ) -> None:
+        self.present = present
+        self.item_id = item_id
+        self.item_count = item_count
+        self.nbt_data = nbt_data
+
+    def __repr__(self):
+        return f'Slot(present={self.present}, item_id={self.item_id}, item_count={self.item_count}, nbt_data={self.nbt_data})'
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader, **kwargs) -> 'Slot':
+        present = await Boolean.from_stream(reader)
+        if not present:
+            return cls(present)
+        item_id = await VarInt.from_stream(reader)
+        item_count = await Byte.from_stream(reader)
+        nbt_data = await nbt.NBT.from_stream(reader)
+        return cls(
+            present=present,
+            item_id=item_id,
+            item_count=item_count,
+            nbt_data=nbt_data,
+        )
+
+
+class SetContainerSlotResponse(InboundEvent):
+    packet_id = 0x15
+    state = ConnectionState.PLAY
+
+    def __init__(
+        self,
+        window_id: Byte,
+        state_id: VarInt,
+        slot: Short,
+        slot_data: Slot,
+    ) -> None:
+        self.window_id = window_id
+        self.state_id = state_id
+        self.slot = slot
+        self.slot_data = slot_data
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'SetContainerSlotResponse':
+        window_id = await Byte.from_stream(reader)
+        state_id = await VarInt.from_stream(reader)
+        slot = await Short.from_stream(reader)
+        return cls(
+            window_id=window_id,
+            state_id=state_id,
+            slot=slot,
+            slot_data=await Slot.from_stream(reader),
+        )
+
+
+class SetContainerContentResponse(InboundEvent):
+    packet_id = 0x13
+    state = ConnectionState.PLAY
+
+    def __init__(
+        self,
+        window_id: Byte,
+        state_id: VarInt,
+        slots: Array[Slot],
+        carried_item: Slot,
+    ) -> None:
+        self.window_id = window_id
+        self.state_id = state_id
+        self.slots = slots
+        self.carried_item = carried_item
+
+    @classmethod
+    async def from_stream(cls, reader: SocketReader) -> 'SetContainerContentResponse':
+        return cls(
+            window_id=await Byte.from_stream(reader),
+            state_id=await VarInt.from_stream(reader),
+            slots=await Array[Slot].from_stream(reader, length=None, mc_type=Slot),
+            carried_item=await Slot.from_stream(reader),
+        )
+
+
 class CollectResponse(InboundEvent):
     packet_id = 0x6C
     state = ConnectionState.PLAY
@@ -1905,26 +1993,30 @@ class PlayerAction(MCType):
             and PlayerAction.Action.INITIALIZE_CHAT not in exclude
         ):
             action = PlayerAction.Action.INITIALIZE_CHAT
-            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.InitializeChat.from_stream(  # type: ignore[no-redef]
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.InitializeChat.from_stream(
+                # type: ignore[no-redef]
                 reader,
             )
         elif (
             actions.int & PlayerAction.Action.UPDATE_GAME_MODE.value
             and PlayerAction.Action.UPDATE_GAME_MODE not in exclude
         ):
-            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateGameMode.from_stream(  # type: ignore[no-redef]
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateGameMode.from_stream(
+                # type: ignore[no-redef]
                 reader,
             )
             action = PlayerAction.Action.UPDATE_GAME_MODE
         elif actions.int & PlayerAction.Action.UPDATE_LISTED.value and PlayerAction.Action.UPDATE_LISTED not in exclude:
-            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateListed.from_stream(  # type: ignore[no-redef]
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateListed.from_stream(
+                # type: ignore[no-redef]
                 reader,
             )
             action = PlayerAction.Action.UPDATE_LISTED
         elif (
             actions.int & PlayerAction.Action.UPDATE_LATENCY.value and PlayerAction.Action.UPDATE_LATENCY not in exclude
         ):
-            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateLatency.from_stream(  # type: ignore[no-redef]
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateLatency.from_stream(
+                # type: ignore[no-redef]
                 reader,
             )
             action = PlayerAction.Action.UPDATE_LATENCY
@@ -1932,7 +2024,8 @@ class PlayerAction(MCType):
             actions.int & PlayerAction.Action.UPDATE_DISPLAY_NAME.value
             and PlayerAction.Action.UPDATE_DISPLAY_NAME not in exclude
         ):
-            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateDisplayName.from_stream(  # type: ignore[no-redef]
+            data: PlayerAction.AVAILABLE_DATA_TYPE = await PlayerAction.UpdateDisplayName.from_stream(
+                # type: ignore[no-redef]
                 reader,
             )
             action = PlayerAction.Action.UPDATE_DISPLAY_NAME

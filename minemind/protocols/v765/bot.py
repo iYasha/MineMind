@@ -23,6 +23,7 @@ from minemind.protocols.v765.inbound.play import (
     PositionResponse,
     UpdateHealthResponse,
 )
+from minemind.protocols.v765.inventory import Inventory
 from minemind.protocols.v765.outbound.login import LoginAcknowledgedRequest, LoginStartRequest
 from minemind.protocols.v765.outbound.play import (
     ArmAnimationRequest,
@@ -62,6 +63,7 @@ class Bot(InteractionModule):
         self.entities = Entities(self.client)
         self.physics = Physics(self.client, self)
         self.game = Game(self.client)
+        self.inventory = Inventory(self.client)
 
     async def run_forever(self):
         async with self:

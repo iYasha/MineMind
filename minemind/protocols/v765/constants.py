@@ -20,6 +20,7 @@ BUBBLE_COLUMN_ID = 731
 AIR_BLOCK_ID = 0
 
 BIOMES = json.load(open(os.path.join(working_dir, 'protocols/v765/minecraft-data/biomes.json')))
+ITEMS = json.load(open(os.path.join(working_dir, 'protocols/v765/minecraft-data/items.json')))
 
 ENTITIES = {
     0: {

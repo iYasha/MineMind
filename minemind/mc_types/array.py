@@ -9,9 +9,11 @@ T = TypeVar('T', bound=MCType)
 
 class Array(list[T], MCType):
     @classmethod
-    async def from_stream(cls, reader: SocketReader, length: int, mc_type: type[T], **kwargs):  # type: ignore[override]
+    async def from_stream(cls, reader: SocketReader, length: int | None, mc_type: type[T], **kwargs):  # type: ignore[override]
         type_params = kwargs.get('type_params', {})
         instance: Array[T] = cls()
+        if length is None:
+            length = (await VarInt.from_stream(reader)).int
         for _ in range(length):
             instance.append(await mc_type.from_stream(reader, **type_params))
         return instance
