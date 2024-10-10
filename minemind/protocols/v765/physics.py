@@ -699,7 +699,7 @@ class Physics(InteractionModule):
                         break
                 await asyncio.sleep(self.PHYSICS_INTERVAL_MS / 1000)
             except Exception as e:
-                print(e)
+                self.logger.error(f'Error in physics timer: {e}')
 
     @EventDispatcher.subscribe(LoginResponse)
     async def _start_playing(self, data: LoginResponse):

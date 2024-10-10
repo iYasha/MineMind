@@ -244,7 +244,9 @@ class Block:
             return BLOCK_COLLISION_SHAPES['shapes'][str(BLOCK_COLLISION_SHAPES['blocks']['stone'])]
         if not isinstance(shape_ids, list):
             return BLOCK_COLLISION_SHAPES['shapes'][str(shape_ids)]
-        return [BLOCK_COLLISION_SHAPES['shapes'][str(shape_id)] for shape_id in shape_ids]
+
+        shape_id = self.state_id - self.min_state_id
+        return BLOCK_COLLISION_SHAPES['shapes'][str(shape_ids[shape_id])]
 
     @classmethod
     def from_state_id(cls, state_id: int) -> 'Block | None':
