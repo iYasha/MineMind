@@ -1,9 +1,7 @@
 import asyncio
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
-
-import pytz
+from datetime import UTC, datetime
 
 from minemind import DEBUG_GAME_EVENTS, DEBUG_PROTOCOL
 from minemind.client import Client
@@ -284,7 +282,7 @@ class Bot(InteractionModule):
         await self.client.send_packet(
             ChatMessageRequest(
                 message=String(message),
-                timestamp=Long(round(datetime.now(tz=pytz.UTC).timestamp())),
+                timestamp=Long(round(datetime.now(tz=UTC).timestamp())),
                 message_count=VarInt(0),
             ),
         )
